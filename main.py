@@ -3,6 +3,7 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
+from kivy.uix.checkbox import CheckBox
 
 
 class MainApp(App):
@@ -10,8 +11,21 @@ class MainApp(App):
         def build(self):
             self.main_layout = BoxLayout(orientation="vertical")
 
+            self.top_menu_layout = BoxLayout(orientation="horizontal",
+                                             size_hint=(1, 0.1))
+
+            self.top_dot_menu_btn = Button(text="...",
+                                           size_hint=(.1, 1))
+
+            self.synch_layout = BoxLayout(orientation="horizontal",
+                                          size_hint=(0.9, 1))
+            self.synch_btn = CheckBox(size_hint=(0.5, 1),
+                                           pos_hint={'center_x': .1, 'center_y': .5})
+            self.synch_label = Label(text="Synchronization",
+                                     size_hint=(0.5, 1))
+
             self.search_layout = BoxLayout(orientation="horizontal",
-                                           size_hint=(1, 0.22),
+                                           size_hint=(1, 0.1),
                                            padding=(2, 10))
             self.search_textinput = TextInput(multiline=False,
                                                    readonly=False,
@@ -23,14 +37,12 @@ class MainApp(App):
                                                    size_hint=(0.25, 1))
 
             self.search_name_btn = Button(text="Find name",
-                                          size_hint=(1, 1),
-                                          pos_hint={'center_x': .5, 'center_y': .5})
+                                          size_hint=(1, 1))
             self.search_note_btn = Button(text="Find note",
-                                          size_hint=(1, 1),
-                                          pos_hint={'center_x': .5, 'center_y': .5})
+                                          size_hint=(1, 1))
 
             self.add_notebook_layout = BoxLayout(orientation="horizontal",
-                                                 size_hint=(1, 0.2),
+                                                 size_hint=(1, 0.1),
                                                  padding=(2, 0, 2, 10))
             self.add_notebook_textinput = TextInput(multiline=False,
                                                    readonly=False,
@@ -40,15 +52,30 @@ class MainApp(App):
                                                   size_hint=(.25, 1),
                                                   pos_hint={'center_x': .8, 'center_y': .5})
 
-            self.notebooks_layout = BoxLayout(orientation="vertical")
+            self.notebooks_layout = BoxLayout(orientation="vertical",
+                                              size_hint=(1, 0.8))
+            self.notebooks_header_layout = BoxLayout(orientation="horizontal",
+                                                     size_hint=(1, 0.2))
+            self.back_btn = Button(text="Back",
+                                   size_hint=(0.25, 1))
             self.directory_label = Label(text="directory/notebook",
-                                         size_hint=(1, .15))
+                                         size_hint=(0.5, 1))
+            self.edit_btn = Button(text="Edit",
+                                   size_hint=(0.25, 1))
+            self.noteboooks_and_inner_lvl_layout = BoxLayout(orientation="vertical",
+                                                             size_hint=(1, 1))
+
             self.notebooks_list_layout = BoxLayout(orientation="vertical")
+            self.inner_lvl_label = Label(text="Some\nmultiline\ntext\n\n\n\n\nof the inner\ncontext")
             self.notebook_btn = Button(text="Notebook 1",
-                                       size=(75, 50),
-                                       size_hint=(None, None))
+                                       size=(1, 50),
+                                       size_hint=(0.5, None))
 
-
+            self.main_layout.add_widget(self.top_menu_layout)
+            self.top_menu_layout.add_widget(self.top_dot_menu_btn)
+            self.top_menu_layout.add_widget(self.synch_layout)
+            self.synch_layout.add_widget(self.synch_btn)
+            self.synch_layout.add_widget(self.synch_label)
             self.main_layout.add_widget(self.search_layout)
             self.search_layout.add_widget(self.search_textinput)
             self.search_layout.add_widget(self.search_buttons_layout)
@@ -58,8 +85,13 @@ class MainApp(App):
             self.add_notebook_layout.add_widget(self.add_notebook_textinput)
             self.add_notebook_layout.add_widget(self.add_notebook_btn)
             self.main_layout.add_widget(self.notebooks_layout)
-            self.notebooks_layout.add_widget(self.directory_label)
-            self.main_layout.add_widget(self.notebooks_list_layout)
+            self.notebooks_layout.add_widget(self.notebooks_header_layout)
+            self.notebooks_header_layout.add_widget(self.back_btn)
+            self.notebooks_header_layout.add_widget(self.directory_label)
+            self.notebooks_header_layout.add_widget(self.edit_btn)
+            self.notebooks_layout.add_widget(self.noteboooks_and_inner_lvl_layout)
+            self.noteboooks_and_inner_lvl_layout.add_widget(self.notebooks_list_layout)
+            self.noteboooks_and_inner_lvl_layout.add_widget(self.inner_lvl_label)
             self.notebooks_list_layout.add_widget(self.notebook_btn)
 
 
