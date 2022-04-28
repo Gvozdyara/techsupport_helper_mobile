@@ -6,6 +6,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.scrollview import ScrollView
+from kivy.properties import StringProperty
 from kivy.core.window import Window
 import time
 from datetime import datetime
@@ -20,18 +21,19 @@ class AskYesNo(BoxLayout):
         self.label = Label(text=self.text)
         self.btn_layout = BoxLayout(orientation="horizontal")
         self.yes_btn = Button(text="Yes")
-        self.yes_btn.bind(on_press=self.yes)
+        self.yes_btn.bind(on_release=self.yes)
         self.no_btn = Button(text="No")
-        self.no_btn.bind(on_press=self.no)
+        self.no_btn.bind(on_release=self.no)
 
-        # app.main_layout.add_widget(self)
+        app.main_layout.add_widget(self)
         self.add_widget(self.label)
         self.add_widget(self.btn_layout)
         self.btn_layout.add_widget(self.yes_btn)
         self.btn_layout.add_widget(self.no_btn)
 
     def yes(self, event):
-        self.remove_widget(self)
+        app.main_layout.remove_widget(self)
+        print("restored")
         return True
 
 
@@ -40,7 +42,7 @@ class AskYesNo(BoxLayout):
         return False
 
 class SynchSelector(CheckBox):
-    global app, Data_base_file
+    global app, Data_base_file, Data_base
     def __init__(self):
         super().__init__(active=False)
         self.bind(active=app.change_sync_mode)
@@ -116,12 +118,89 @@ class SynchSelector(CheckBox):
                             pickle.dump(Data_base, f)
 
 
+class NewSectionEntry(TextInput):
+    def __init__(self, current_table):
+        super().__init__(multiline=False,
+                       readonly=False,
+                       halign="left",
+                       font_size=50,
+                       size_hint=(.7, 1))
+        self.add_notebook_btn = Button(text="Add notebook",
+                                    size_hint=(.3, 1),
+                                    pos_hint={'center_x': .8, 'center_y': .5})
+        self.add_notebook_btn.bind(on_release=self.add_section)
+
+        self.current_table = current_table
+
+    def set_current_table(self, new_current_table):
+        self.current_table = new_current_table
+
+    def add_section(self):
+        global Data_base_file
+        section_title = self.text
+        print(section_title, "section_title")
+        if app.synch_mode_var:
+            if yadsk.is_cloud_more_fresh(app.synch_mode_var):
+                yadsk.download()
+                with open(Data_base_file, "rb") as f:
+                    Data_base = pickle.load(f)
+        else:
+            pass
+        if section_title != "":
+            self.text = ""
+            # if not section_title in existing_sections:
+        try:
+            Data_base[section_title]
+            print(f"{section_title} already exists")
+        except KeyError:
+            self.add_table_to_tbls_list()
+            # new_section_btn = Button(section_frame, section_title, open_section, current_table)
+            # else:
+            #     messagebox.showinfo("Ошибка", "Такая запись уже существует")
+        else:
+            pass
+
+    def add_table_to_tbls_list(self):
+        Data_base[self.section_title] = ["Empty", self.current_table, datetime.now(), datetime.now()]
+        with open(Data_base_file, "wb") as f:
+            pickle.dump(Data_base, f)
+        if self.synch_mode_var.get():
+            yadsk.upload()
+
+
+class SectionBtn(Button):
+    def __init__(self, section, current_table):
+        super().__init__(text=section, size_hint=(1,1))
+        self.current_table = current_table
+        self.section = section
+        self.bind(on_release=self.click_command)
+        self.bind(on_press=self.show_inner_lvl)
+
+    def click_command(self, *args):
+        app.open_section(self.current_table, self.section)
+
+    def show_inner_lvl(self, *args):
+
+        self.description = Data_base[self.section][0]
+        self.to_layout_sections = list()
+        for i in Data_base:
+            if Data_base[i][1] == self.section:
+                self.to_layout_sections.append(i)
+
+        self.created_edited_time = Data_base[self.section][2:]
+        app.inner_lvl_label
+
+        SectionInnerLvlLabel(section_inner_lvl_frame, to_layout_sections,
+                             description, created_edited_time)
+
+        return
 
 class MainApp(App):
 
     def __init__(self):
         super().__init__()
         self.synch_mode_var = False
+        inner_lvl_text = StringProperty()
 
     def build(self):
         global Data_base_file
@@ -162,14 +241,7 @@ class MainApp(App):
         self.add_notebook_layout = BoxLayout(orientation="horizontal",
                                              size_hint=(1, 0.1),
                                              padding=(2, 0, 2, 10))
-        self.add_notebook_textinput = TextInput(multiline=False,
-                                               readonly=False,
-                                               halign="left",
-                                               font_size=50,
-                                               size_hint=(.7, 1))
-        self.add_notebook_btn = Button(text="Add notebook",
-                                              size_hint=(.3, 1),
-                                              pos_hint={'center_x': .8, 'center_y': .5})
+        self.add_notebook_textinput = NewSectionEntry("main")
 
         self.notebooks_layout = BoxLayout(orientation="vertical",
                                           size_hint=(1, 0.8))
@@ -191,16 +263,18 @@ class MainApp(App):
             row_force_default=True)
         self.notebooks_list_layout.bind(minimum_height=self.notebooks_list_layout.setter('height'))
 
-        self.inner_lvl_label = Label(text="Some\nmultiline\ntext\n\n\n\n\nof the inner\ncontext")
-        for i in range(20):
-            self.i = Button(text=f'Button {i}',
-                                      size_hint=(1,1),
-                                      )
-            self.notebooks_list_layout.add_widget(self.i)
+        self.inner_lvl_label = Label(text=self.inner_lvl_text)
+        # for i in range(20):
+        #     self.i = Button(text=f'Button {i}',
+        #                               size_hint=(1,1),
+        #                               )
+        #     self.notebooks_list_layout.add_widget(self.i)
         self.notebook_btn = Button(text="Notebook 1",
                                    size=(1, 50),
                                    size_hint=(0.5, None))
         self.root = ScrollView()
+
+
 
         self.main_layout.add_widget(self.top_menu_layout)
         self.top_menu_layout.add_widget(self.top_dot_menu_btn)
@@ -214,7 +288,7 @@ class MainApp(App):
         self.main_layout.add_widget(self.add_notebook_layout)
 
         self.add_notebook_layout.add_widget(self.add_notebook_textinput)
-        self.add_notebook_layout.add_widget(self.add_notebook_btn)
+        self.add_notebook_layout.add_widget(self.add_notebook_textinput.add_notebook_btn)
         self.main_layout.add_widget(self.notebooks_layout)
         self.notebooks_layout.add_widget(self.notebooks_header_layout)
         self.notebooks_header_layout.add_widget(self.back_btn)
@@ -226,12 +300,41 @@ class MainApp(App):
         self.root.add_widget(self.notebooks_list_layout)
         self.noteboooks_and_inner_lvl_layout.add_widget(self.inner_lvl_label)
 
+        self.open_section("TSH", "main")
+
         return self.main_layout
+
+    def change_inner_lvl_text(self, to_layout, description, date):
+        to_layout.insert(0, "Содержание")
+        if len(to_layout) < 2:
+            to_layout.insert(1, "Здесь пока пусто")
+        tbl_of_cntns = "\n".join(to_layout)
+        self.inner_lvl_text = f"{date[0]}\t{date[1]}\n{str(description[:500])}...\n\n{tbl_of_cntns}"
+
 
     def change_sync_mode(self, checkbox, value):
         self.synch_mode_var = value
         print("synch_mode_var", self.synch_mode_var)
 
+    def layout_section_btns(self, current_table):
+        to_layout_list = list()
+
+        for i in Data_base:
+            if Data_base[i][1] == current_table:
+                to_layout_list.append(i)
+
+        for item in reversed(to_layout_list):
+            section_btn = SectionBtn(item,  # section_name
+                       current_table)
+            self.notebooks_list_layout.add_widget(section_btn)
+
+    def open_section(self, current_table, inner_table):
+        for button in self.notebooks_list_layout.children:
+            self.notebooks_list_layout.remove_widget(button)
+
+        self.add_notebook_textinput.set_current_table(inner_table)
+
+        self.layout_section_btns(inner_table)
 
 
 
