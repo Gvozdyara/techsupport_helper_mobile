@@ -41,28 +41,29 @@ class AskYesNo(BoxLayout):
         self.remove_widget(self)
         return False
 
+
 class SynchSelector(CheckBox):
-    global app, Data_base_file, Data_base
     def __init__(self):
-        super().__init__(active=False)
+        super().__init__(active=None)
         self.bind(active=app.change_sync_mode)
         self.bind(on_press=self.synchronize)
 
     def synchronize(self, *args):
-        global Data_base_file
         # check synch status
-        if app.synch_mode_var:
+        if app.synch_mode_var==True:
+            print("if app.synch_mode_var:")
             #   check if the disk is more fresh
             #  the same if no file on the disk to compare
             if yadsk.is_cloud_more_fresh(app.synch_mode_var):
+                print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):")
                 #  select the option
                 if AskYesNo(
 "The base from the cloud is more fresh. Update from the cloud (Yes) or update the cloud (No)?"):
                     #  try to download from the cloud
                     if yadsk.download():
                         #  after download successfull open the file
-                        with open(Data_base_file, "rb") as f:
-                            Data_base = pickle.load(f)
+                        with open(app.Data_base_file, "rb") as f:
+                            app.Data_base = pickle.load(f)
                     #  if couldn't download the file show error
                     else:
                         AskYesNo("Couldn't download from the cloud")
@@ -70,52 +71,76 @@ class SynchSelector(CheckBox):
                 #  if update the cloud from the disk selected
                 else:
                     try:
+                        print("first askyesno, else, first try")
                         #  try upload the file to the cloud
                         yadsk.upload()
-                        with open(Data_base_file, "rb") as f:
-                            Data_base = pickle.load(f)
+                        with open(app.Data_base_file, "rb") as f:
+                            app.Data_base = pickle.load(f)
                     #  if file not found on the disk create a new empty one
                     except FileNotFoundError:
-                        Data_base = dict()
-                        Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
-                        Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
-                        with open(Data_base_file, "wb") as f:
-                            pickle.dump(Data_base, f)
+                        app.Data_base = dict()
+                        app.Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
+                        app.Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
+                        with open(app.Data_base_file, "wb") as f:
+                            pickle.dump(app.Data_base, f)
             #  if disk is more fresh or no file in the cloud
             else:
+                print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):else")
                 try:
+                     print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):try upload")
                      #  try upload to the cloud
                      yadsk.upload()
-                     with open(Data_base_file, "rb") as f:
-                         Data_base = pickle.load(f)
+
+                     with open(app.Data_base_file, "rb") as f:
+                         app.Data_base = pickle.load(f)
                 #  if no file on the disk create the new one
                 except FileNotFoundError:
                     print("filenotfound")
-                    Data_base = dict()
-                    Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
-                    Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
-                    with open(Data_base_file, "wb") as f:
-                        pickle.dump(Data_base, f)
+                    app.Data_base = dict()
+                    app.Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
+                    app.Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
+                    with open(app.Data_base_file, "wb") as f:
+                        pickle.dump(app.Data_base, f)
                 except:
                     print("connection error probably")
                     AskYesNo("Connection error porobably")
                     try:
-                        with open(Data_base_file, "rb") as f:
-                            Data_base = pickle.load(f)
+                        with open(app.Data_base_file, "rb") as f:
+                            app.Data_base = pickle.load(f)
                     except EOFError:
                         print("EOFError")
-                        Data_base = dict()
-                        Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
-                        Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
-                        with open(Data_base_file, "wb") as f:
-                            pickle.dump(Data_base, f)
+                        app.Data_base = dict()
+                        app.Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
+                        app.Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
+                        with open(app.Data_base_file, "wb") as f:
+                            pickle.dump(app.Data_base, f)
                     except FileNotFoundError:
                         print("FileNotFoundError")
-                        Data_base = dict()
-                        Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
-                        Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
-                        with open(Data_base_file, "wb") as f:
-                            pickle.dump(Data_base, f)
+                        app.Data_base = dict()
+                        app.Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
+                        app.Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
+                        with open(app.Data_base_file, "wb") as f:
+                            pickle.dump(app.Data_base, f)
+
+        else:
+            try:
+                print("try open data_base")
+                with open(app.Data_base_file, "rb") as f:
+                    app.Data_base = pickle.load(f)
+            except EOFError:
+                print("EOFError")
+                app.Data_base = dict()
+                app.Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
+                app.Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
+                with open(app.Data_base_file, "wb") as f:
+                    pickle.dump(app.Data_base, f)
+            except FileNotFoundError:
+                print("FileNotFoundError")
+                app.Data_base = dict()
+                app.Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
+                app.Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
+                with open(app.Data_base_file, "wb") as f:
+                    pickle.dump(app.Data_base, f)
 
 
 class NewSectionEntry(TextInput):
@@ -136,21 +161,20 @@ class NewSectionEntry(TextInput):
         self.current_table = new_current_table
 
     def add_section(self):
-        global Data_base_file
         section_title = self.text
         print(section_title, "section_title")
         if app.synch_mode_var:
             if yadsk.is_cloud_more_fresh(app.synch_mode_var):
                 yadsk.download()
-                with open(Data_base_file, "rb") as f:
-                    Data_base = pickle.load(f)
+                with open(app.Data_base_file, "rb") as f:
+                    app.Data_base = pickle.load(f)
         else:
             pass
         if section_title != "":
             self.text = ""
             # if not section_title in existing_sections:
         try:
-            Data_base[section_title]
+            app.Data_base[section_title]
             print(f"{section_title} already exists")
         except KeyError:
             self.add_table_to_tbls_list()
@@ -161,49 +185,58 @@ class NewSectionEntry(TextInput):
             pass
 
     def add_table_to_tbls_list(self):
-        Data_base[self.section_title] = ["Empty", self.current_table, datetime.now(), datetime.now()]
-        with open(Data_base_file, "wb") as f:
-            pickle.dump(Data_base, f)
+        app.Data_base[self.section_title] = ["Empty", self.current_table, datetime.now(), datetime.now()]
+        with open(app.Data_base_file, "wb") as f:
+            pickle.dump(app.Data_base, f)
         if self.synch_mode_var.get():
             yadsk.upload()
 
 
 class SectionBtn(Button):
     def __init__(self, section, current_table):
-        super().__init__(text=section, size_hint=(1,1))
+        super().__init__(text=section, size_hint=(1,.5))
         self.current_table = current_table
         self.section = section
         self.bind(on_release=self.click_command)
         self.bind(on_press=self.show_inner_lvl)
+        self.description = app.Data_base[self.section][0]
+        self.to_layout_sections = list()
+        self.created_edited_time = app.Data_base[self.section][2:]
 
     def click_command(self, *args):
         app.open_section(self.current_table, self.section)
 
     def show_inner_lvl(self, *args):
-
-        self.description = Data_base[self.section][0]
-        self.to_layout_sections = list()
-        for i in Data_base:
-            if Data_base[i][1] == self.section:
+        for i in app.Data_base:
+            if app.Data_base[i][1] == self.section:
                 self.to_layout_sections.append(i)
 
-        self.created_edited_time = Data_base[self.section][2:]
-        app.inner_lvl_label
 
-        SectionInnerLvlLabel(section_inner_lvl_frame, to_layout_sections,
-                             description, created_edited_time)
+        app.inner_lvl_label.update_text(self.to_layout_sections, self.description, self.created_edited_time)
 
-        return
+
+class InnerLvlLabel(Label):
+    def __init__(self):
+        self.text = ""
+        super().__init__(text=self.text, textwrap=True)
+
+    def update_text(self, to_layout, description, date):
+        to_layout.insert(0, "Содержание")
+        if len(to_layout) < 2:
+            to_layout.insert(1, "Здесь пока пусто")
+        tbl_of_cntns = "\n".join(to_layout)
+        self.text = f"{date[0]}\t{date[1]}\n{str(description[:500])}...\n\n{tbl_of_cntns}"
 
 class MainApp(App):
 
     def __init__(self):
         super().__init__()
-        self.synch_mode_var = False
-        inner_lvl_text = StringProperty()
+        self.synch_mode_var = 0
+        self.inner_lvl_text = ""
+        self.Data_base_file = "techsupport_base"
+        self.Data_base = dict()
 
     def build(self):
-        global Data_base_file
         self.main_layout = BoxLayout(orientation="vertical")
 
         self.top_menu_layout = BoxLayout(orientation="horizontal",
@@ -218,8 +251,6 @@ class MainApp(App):
         self.synch_btn = SynchSelector()
         self.synch_btn.synchronize()
 
-        # self.synch_btn = CheckBox(size_hint=(0.5, 1),
-        #                                pos_hint={'center_x': .1, 'center_y': .5})
         self.synch_label = Label(text="Synchronization",
                                  size_hint=(0.5, 1))
 
@@ -263,15 +294,8 @@ class MainApp(App):
             row_force_default=True)
         self.notebooks_list_layout.bind(minimum_height=self.notebooks_list_layout.setter('height'))
 
-        self.inner_lvl_label = Label(text=self.inner_lvl_text)
-        # for i in range(20):
-        #     self.i = Button(text=f'Button {i}',
-        #                               size_hint=(1,1),
-        #                               )
-        #     self.notebooks_list_layout.add_widget(self.i)
-        self.notebook_btn = Button(text="Notebook 1",
-                                   size=(1, 50),
-                                   size_hint=(0.5, None))
+        self.inner_lvl_label = InnerLvlLabel()
+
         self.root = ScrollView()
 
 
@@ -310,23 +334,12 @@ class MainApp(App):
             to_layout.insert(1, "Здесь пока пусто")
         tbl_of_cntns = "\n".join(to_layout)
         self.inner_lvl_text = f"{date[0]}\t{date[1]}\n{str(description[:500])}...\n\n{tbl_of_cntns}"
+        print(self.inner_lvl_text)
 
 
     def change_sync_mode(self, checkbox, value):
         self.synch_mode_var = value
         print("synch_mode_var", self.synch_mode_var)
-
-    def layout_section_btns(self, current_table):
-        to_layout_list = list()
-
-        for i in Data_base:
-            if Data_base[i][1] == current_table:
-                to_layout_list.append(i)
-
-        for item in reversed(to_layout_list):
-            section_btn = SectionBtn(item,  # section_name
-                       current_table)
-            self.notebooks_list_layout.add_widget(section_btn)
 
     def open_section(self, current_table, inner_table):
         for button in self.notebooks_list_layout.children:
@@ -336,21 +349,19 @@ class MainApp(App):
 
         self.layout_section_btns(inner_table)
 
+    def layout_section_btns(self, current_table):
+        to_layout_list = list()
 
+        for i in self.Data_base:
+            if self.Data_base[i][1] == current_table:
+                to_layout_list.append(i)
 
-
-
-
-
-
-
-
-
-
-
+        for item in reversed(to_layout_list):
+            section_btn = SectionBtn(item,  # section_name
+                                     current_table)
+            self.notebooks_list_layout.add_widget(section_btn)
 
 
 if __name__ == '__main__':
-    Data_base_file = "techsupport_base"
     app = MainApp()
     app.run()
