@@ -151,14 +151,9 @@ class NewSectionEntry(TextInput):
                        font_size=50,
                        size_hint=(.7, 1))
         self.add_notebook_btn = Button(text="Add notebook",
-                                    size_hint=(.3, 1),
-                                    pos_hint={'center_x': .8, 'center_y': .5})
+                                    size_hint=(.3, 1))
+                                    # pos_hint={'center_x': .8, 'center_y': .5})
         self.add_notebook_btn.bind(on_release=self.add_section)
-
-        self.current_table = current_table
-
-    def set_current_table(self, new_current_table):
-        self.current_table = new_current_table
 
     def add_section(self):
         section_title = self.text
@@ -185,26 +180,50 @@ class NewSectionEntry(TextInput):
             pass
 
     def add_table_to_tbls_list(self):
-        app.Data_base[self.section_title] = ["Empty", self.current_table, datetime.now(), datetime.now()]
+        app.Data_base[self.section_title] = ["Empty", app.current_table, datetime.now(), datetime.now()]
         with open(app.Data_base_file, "wb") as f:
             pickle.dump(app.Data_base, f)
         if self.synch_mode_var.get():
             yadsk.upload()
 
 
+class BackBtnMain(Button):
+    def __init__(self):
+        self.is_inactive = False
+        super().__init__(text="Back",
+                               size_hint=(0.25, 1),
+                               disabled=self.is_inactive)
+
+
+
+    def command(self, e):
+        if app.current_table != "TSH":
+            app.open_section(app.Data_base[app.current_table][1], app.current_table)
+        else:
+            self.set_state()
+
+    def set_state(self):
+        if app.current_table != "TSH":
+            self.is_inactive = False
+        else:
+            self.is_inactive = True
+
+
 class SectionBtn(Button):
-    def __init__(self, section, current_table):
+    def __init__(self, section, parent_table):
         super().__init__(text=section, size_hint=(1,.5))
-        self.current_table = current_table
+        self.parent_table = parent_table
         self.section = section
         self.bind(on_release=self.click_command)
         self.bind(on_press=self.show_inner_lvl)
         self.description = app.Data_base[self.section][0]
         self.to_layout_sections = list()
         self.created_edited_time = app.Data_base[self.section][2:]
+        app.notebooks_list_layout.add_widget(self)
 
     def click_command(self, *args):
-        app.open_section(self.current_table, self.section)
+        app.open_section(self.parent_table, self.section)
+        print(f"open section {self.section} from {self.parent_table}")
 
     def show_inner_lvl(self, *args):
         for i in app.Data_base:
@@ -212,13 +231,17 @@ class SectionBtn(Button):
                 self.to_layout_sections.append(i)
 
 
-        app.inner_lvl_label.update_text(self.to_layout_sections, self.description, self.created_edited_time)
+        app.inner_lvl_label.update_text(self.to_layout_sections, self.description[:500], self.created_edited_time)
 
 
 class InnerLvlLabel(Label):
     def __init__(self):
         self.text = ""
-        super().__init__(text=self.text, textwrap=True)
+        super().__init__(text=self.text,
+                         text_size=(self.width, None),
+                         size = self.texture_size,
+                         size_hint=(1, None),
+                         pos_hint={'center_x': .8, 'bottom_y': 1})
 
     def update_text(self, to_layout, description, date):
         to_layout.insert(0, "Содержание")
@@ -235,6 +258,7 @@ class MainApp(App):
         self.inner_lvl_text = ""
         self.Data_base_file = "techsupport_base"
         self.Data_base = dict()
+        self.current_table = "main"
 
     def build(self):
         self.main_layout = BoxLayout(orientation="vertical")
@@ -278,8 +302,7 @@ class MainApp(App):
                                           size_hint=(1, 0.8))
         self.notebooks_header_layout = BoxLayout(orientation="horizontal",
                                                  size_hint=(1, 0.05))
-        self.back_btn = Button(text="Back",
-                               size_hint=(0.25, 1))
+        self.back_btn = BackBtnMain()
         self.directory_label = Label(text="directory/notebook",
                                      size_hint=(0.5, 1))
         self.edit_btn = Button(text="Edit",
@@ -295,8 +318,13 @@ class MainApp(App):
         self.notebooks_list_layout.bind(minimum_height=self.notebooks_list_layout.setter('height'))
 
         self.inner_lvl_label = InnerLvlLabel()
+        self.inner_lvl_layout = GridLayout(cols=1, size_hint_y=None, size_hint_x=1,
+                                          pos_hint={"left_x":1, "top_y":0})
+        self.inner_lvl_layout.bind(minimum_height=self.inner_lvl_layout.setter('height'))
 
-        self.root = ScrollView()
+        self.inner_lvl_scroll = ScrollView()
+
+        self.notebooks_list_scroll = ScrollView()
 
 
 
@@ -320,13 +348,20 @@ class MainApp(App):
         self.notebooks_header_layout.add_widget(self.directory_label)
 
         self.notebooks_layout.add_widget(self.noteboooks_and_inner_lvl_layout)
-        self.noteboooks_and_inner_lvl_layout.add_widget(self.root)
-        self.root.add_widget(self.notebooks_list_layout)
-        self.noteboooks_and_inner_lvl_layout.add_widget(self.inner_lvl_label)
+        self.noteboooks_and_inner_lvl_layout.add_widget(self.notebooks_list_scroll)
+        self.notebooks_list_scroll.add_widget(self.notebooks_list_layout)
+        self.noteboooks_and_inner_lvl_layout.add_widget(self.inner_lvl_scroll)
+        self.inner_lvl_scroll.add_widget((self.inner_lvl_layout))
+        self.inner_lvl_layout.add_widget(self.inner_lvl_label)
 
         self.open_section("TSH", "main")
 
         return self.main_layout
+
+    def set_current_table(self, new_current_table):
+        self.current_table = new_current_table
+
+
 
     def change_inner_lvl_text(self, to_layout, description, date):
         to_layout.insert(0, "Содержание")
@@ -342,24 +377,29 @@ class MainApp(App):
         print("synch_mode_var", self.synch_mode_var)
 
     def open_section(self, current_table, inner_table):
-        for button in self.notebooks_list_layout.children:
-            self.notebooks_list_layout.remove_widget(button)
 
-        self.add_notebook_textinput.set_current_table(inner_table)
+        self.set_current_table(current_table)
+        print(f"{self.current_table} is currently openned")
 
+        self.back_btn.set_state()
+        self.back_btn.bind(on_release=self.back_btn.command)
         self.layout_section_btns(inner_table)
 
-    def layout_section_btns(self, current_table):
-        to_layout_list = list()
+
+
+    def layout_section_btns(self, inner_table):
+
+        self.notebooks_list_layout.clear_widgets()
+
+        self.to_layout_list = list()
 
         for i in self.Data_base:
-            if self.Data_base[i][1] == current_table:
-                to_layout_list.append(i)
+            if self.Data_base[i][1] == inner_table:
+                self.to_layout_list.append(i)
 
-        for item in reversed(to_layout_list):
-            section_btn = SectionBtn(item,  # section_name
-                                     current_table)
-            self.notebooks_list_layout.add_widget(section_btn)
+
+        for item in reversed(self.to_layout_list):
+            SectionBtn(item, inner_table)
 
 
 if __name__ == '__main__':
