@@ -108,10 +108,11 @@ class BackBtnMain(Button):
 
     def command(self, e):
         print("usuall return")
-        if app.parent_table != "TSH":
+        if app.current_table != "main":
             app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
             self.set_state()
         else:
+            app.open_section("TSH", "main")
             self.set_state()
 
     def set_state(self):
@@ -129,23 +130,20 @@ class BackBtnMain(Button):
                 app.noteboooks_and_inner_lvl_layout.clear_widgets()
                 app.add_notebook_textinput.set_initial_text("")
                 app.layout_notebooks_list_inner_level()
-                app.open_section(app.parent_table, app.current_table)
             elif app.set_new_note(new_note) == "key_error":
                 parent_table = app.Data_base[app.parent_table][1]
                 app.noteboooks_and_inner_lvl_layout.clear_widgets()
                 app.add_notebook_textinput.set_initial_text("")
                 app.layout_notebooks_list_inner_level()
-                app.open_section(parent_table, app.parent_table)
         else:
             app.noteboooks_and_inner_lvl_layout.clear_widgets()
             app.layout_notebooks_list_inner_level()
-            app.open_section(app.parent_table, app.current_table)
             app.add_notebook_textinput.set_initial_text("")
 
-
-        print("end of save_command, back button should be configured")
         self.unbind(on_release=self.save_command)
         self.bind(on_release=self.command)
+        print("end of save_command, back button should be configured")
+
 
 class SectionBtn(Button):
     def __init__(self, section, parent_table):
@@ -233,6 +231,7 @@ class EditText(TextInput):
                          font_size=self.font_size)
         app.add_notebook_textinput.set_initial_text(app.current_table)
         app.noteboooks_and_inner_lvl_layout.add_widget(self)
+        app.back_btn.unbind(on_release=app.back_btn.command)
         app.back_btn.bind(on_release=app.back_btn.save_command)
 
     def set_bold(self, e, value):
@@ -386,17 +385,22 @@ class MainApp(App):
         self.compare_with_cloud()
         print("compare is done")
         try:
+
             value = self.Data_base[self.current_table]
             name = self.add_notebook_textinput.text.upper()
+            if name in self.Data_base:
+                name = self.current_table
+                print(f"Name {self.add_notebook_textinput.text.upper()} already exists")
             print(name)
             self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
             if name != self.current_table:
                 del self.Data_base[self.current_table]
                 for key in self.Data_base:
-                    if self.Data_base[key] == name:
+                    if self.Data_base[key] == self.current_table:
                         value = self.Data_base[key]
                         self.Data_base[key] = [value[0, name, value[2], value[3]]]
                 self.set_current_table(name)
+                self.directory_label.set_text()
                 with open(self.Data_base_file, "wb") as f:
                     pickle.dump(self.Data_base, f)
                     if self.synch_mode_var:
@@ -414,6 +418,7 @@ class MainApp(App):
         print(f"{self.current_table} is currently openned")
 
         self.back_btn.set_state()
+        self.back_btn.bind(on_release=self.back_btn.command)
 
         self.layout_section_btns(inner_table)
 
