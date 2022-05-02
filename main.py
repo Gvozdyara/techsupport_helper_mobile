@@ -13,6 +13,8 @@ import time
 from datetime import datetime
 import pickle
 import yadsk
+import tkinter as tk
+from tkinter import messagebox
 
 
 class AskYesNo(BoxLayout):
@@ -35,12 +37,12 @@ class AskYesNo(BoxLayout):
     def yes(self, event):
         app.main_layout.remove_widget(self)
         print("restored")
-        return True
+        return "Yes"
 
 
     def no(self, event):
         app.main_layout.remove_widget(self)
-        return False
+        return "No"
 
 
 class SynchSelector(CheckBox):
@@ -48,6 +50,49 @@ class SynchSelector(CheckBox):
         super().__init__(active=None)
         self.bind(active=app.change_sync_mode)
         self.bind(on_press=app.compare_with_cloud)
+
+
+class AddNotebookBtn(Button):
+    def __init__(self):
+        super().__init__(text=self.text,
+                        size_hint=(.3, 1))
+                        # pos_hint={'center_x': .8, 'center_y': .5})
+        self.bind(on_release=app.add_notebook_textinput.add_section)
+
+    def set_text(self, new_text):
+        self.text = new_text
+
+    def delete_notebook(self, e):
+        print("Start delete")
+        if tk.messagebox.askyesno("Attention", f"Delete {app.current_table}?"):
+            # app.compare_with_cloud()
+            # try:
+            del app.Data_base[app.current_table]
+            print(f"app.Data_base[{app.current_table}] deleted")
+            i = 1
+            while i > 0:
+                data_base = tuple(app.Data_base)
+                print(len(app.Data_base), "during an iteration")
+                print(data_base, "\n current data_base tuple", i, "-i")
+                for key in data_base:
+                    if app.Data_base[key][1] not in app.Data_base.keys() and app.Data_base[key][1] != "TSH":
+                        print(f"Deleting {key}")
+                        del app.Data_base[key]
+                        i += 1
+                i -= 1
+            with open(app.Data_base_file, "wb") as f:
+                pickle.dump(app.Data_base, f)
+                if app.synch_mode_var:
+                    yadsk.upload(app)
+            # except KeyError:
+            #     AskYesNo(f"There is no {app.current_table} notebook")
+            self.unbind(on_release=self.delete_notebook)
+            self.bind(on_release=app.add_notebook_textinput.add_section)
+            self.set_text("Add notebook")
+            app.noteboooks_and_inner_lvl_layout.clear_widgets()
+            app.layout_notebooks_list_inner_level()
+            app.back_btn.unbind(on_release=app.back_btn.save_command)
+            app.open_section(app.parent_table[1], app.parent_table)
 
 
 
@@ -59,10 +104,7 @@ class NewSectionEntry(TextInput):
                        halign="left",
                        # font_size=50,
                        size_hint=(.7, 1))
-        self.add_notebook_btn = Button(text="Add notebook",
-                                    size_hint=(.3, 1))
-                                    # pos_hint={'center_x': .8, 'center_y': .5})
-        self.add_notebook_btn.bind(on_release=self.add_section)
+
 
     def add_section(self, e):
         self.section_title = self.text
@@ -108,7 +150,7 @@ class BackBtnMain(Button):
 
     def command(self, e):
         print("usuall return")
-        if app.current_table != "main":
+        if app.parent_table != "TSH":
             app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
             self.set_state()
         else:
@@ -233,6 +275,9 @@ class EditText(TextInput):
         app.noteboooks_and_inner_lvl_layout.add_widget(self)
         app.back_btn.unbind(on_release=app.back_btn.command)
         app.back_btn.bind(on_release=app.back_btn.save_command)
+        app.add_notebook_button.unbind(on_release=app.add_notebook_textinput.add_section)
+        app.add_notebook_button.bind(on_release=app.add_notebook_button.delete_notebook)
+        app.add_notebook_button.set_text("Delete notebook")
 
     def set_bold(self, e, value):
         self.bold = value
@@ -296,6 +341,7 @@ class MainApp(App):
                                              size_hint=(1, 0.1),
                                              padding=(2, 0, 2, 10))
         self.add_notebook_textinput = NewSectionEntry()
+        self.add_notebook_button = AddNotebookBtn()
 
         self.notebooks_layout = BoxLayout(orientation="vertical",
                                           size_hint=(1, 0.8))
@@ -335,7 +381,7 @@ class MainApp(App):
         self.main_layout.add_widget(self.add_notebook_layout)
 
         self.add_notebook_layout.add_widget(self.add_notebook_textinput)
-        self.add_notebook_layout.add_widget(self.add_notebook_textinput.add_notebook_btn)
+        self.add_notebook_layout.add_widget(self.add_notebook_button)
         self.main_layout.add_widget(self.notebooks_layout)
         self.notebooks_layout.add_widget(self.notebooks_header_layout)
         self.notebooks_header_layout.add_widget(self.back_btn)
@@ -411,16 +457,16 @@ class MainApp(App):
             return "key_error"
 
 
-    def open_section(self, current_table, inner_table):
-        self.set_current_table(inner_table)
-        self.set_parent_table(current_table)
+    def open_section(self, parent_table, current_table):
+        self.set_current_table(current_table)
+        self.set_parent_table(parent_table)
         self.directory_label.set_text()
         print(f"{self.current_table} is currently openned")
 
         self.back_btn.set_state()
         self.back_btn.bind(on_release=self.back_btn.command)
 
-        self.layout_section_btns(inner_table)
+        self.layout_section_btns(current_table)
 
     def create_new_data_base(self):
         self.Data_base = dict()
@@ -457,7 +503,7 @@ class MainApp(App):
                             self.create_new_data_base()
                 #  upload to the disk option is selected
                 else:
-                    print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):else")
+                    print("Update the disk")
                     try:
                         print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):try upload")
                         #  try upload to the cloud
