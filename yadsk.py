@@ -38,13 +38,16 @@ def is_cloud_more_fresh(app):
         file_mode_time_epoch = os.path.getmtime(app.Data_base_file)
         file_mode_time = dt.datetime.utcfromtimestamp(file_mode_time_epoch)
         if resobj["modified"].replace(tzinfo=None) - file_mode_time >= dt.timedelta(seconds=100):
+            print("CLoud is more fresh")
             return True
         else:
+            print("Disk is more fresh")
             return False
     except yadisk.exceptions.PathNotFoundError:
         print("PathNotFoundError")
         return False
     except FileNotFoundError:
+        print("Filenotfound")
         return True
     except requests.exceptions.ConnectionError:
         print("connection error")

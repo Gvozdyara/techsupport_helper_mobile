@@ -6,15 +6,14 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.scrollview import ScrollView
-from kivy.properties import StringProperty
-from kivy.properties import ObjectProperty
-from kivy.core.window import Window
-import time
+from kivy.metrics import dp
+from kivy.lang.builder import Builder
 from datetime import datetime
 import pickle
 import yadsk
 import tkinter as tk
 from tkinter import messagebox
+
 
 
 class AskYesNo(BoxLayout):
@@ -49,7 +48,6 @@ class SynchSelector(CheckBox):
     def __init__(self):
         super().__init__(active=None)
         self.bind(active=app.change_sync_mode)
-        self.bind(on_press=app.compare_with_cloud)
 
 
 class AddNotebookBtn(Button):
@@ -58,6 +56,7 @@ class AddNotebookBtn(Button):
                         size_hint=(.3, 1))
                         # pos_hint={'center_x': .8, 'center_y': .5})
         self.bind(on_release=app.add_notebook_textinput.add_section)
+        self.text = "Add notebook"
 
     def set_text(self, new_text):
         self.text = new_text
@@ -92,10 +91,72 @@ class AddNotebookBtn(Button):
             app.noteboooks_and_inner_lvl_layout.clear_widgets()
             app.layout_notebooks_list_inner_level()
             app.back_btn.unbind(on_release=app.back_btn.save_command)
-            app.open_section(app.parent_table[1], app.parent_table)
+            app.back_btn.bind(on_release=app.back_btn.command)
+            print(f"will be openned {app.parent_table}, with its parent {app.Data_base[app.parent_table][1]}")
+            app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
+
+
+class SearchInterface():
+    def __init__(self, mode, *args):
+        super().__init__()
+        app.notebooks_list_layout.clear_widgets()
+        self.mode = mode
+        self.found_result = list()
+        self.found_notes = dict()
+
+        if mode == "name":
+            self.search_name()
+        else:
+            self.search_note()
+
+    def search_note(self):
+        for key in app.Data_base.keys():
+            if app.search_textinput.text in app.Data_base[key][1]:
+                note = app.Data_base[key][0]
+                if len(note)>202:
+                    start_index = note.find(app.search_textinput.text)
+                    if start_index>99:
+                        short = note[start_index-100:start_index+100]
+                    else:
+                        short = note[0:start_index+200]
+                else:
+                    short = note
+                self.found_notes[key] = short
+
+        for key in self.found_notes.keys():
+            SectionBtn(key, app.Data_base[key][1], self.found_notes[key])
 
 
 
+    def search_name(self):
+        for key in app.Data_base.keys():
+            if app.search_textinput.text.upper() in str(key):
+                self.found_result.append(key)
+        for i in self.found_result:
+            SectionBtn(i, app.Data_base[i][1])
+
+
+class FindNoteBtn(Button):
+    def __init__(self):
+        super().__init__(text="Find\nnote", size_hint=(0.15, 1))
+        self.bind(on_release=self.start_search)
+
+    def start_search(self, e):
+        print("start search")
+        SearchInterface("note")
+
+
+class FindNameBtn(Button):
+    def __init__(self):
+        print("Instance of FindNameBtn")
+        super().__init__(text="Find\nname", size_hint=(0.15, 1))
+
+        self.bind(on_release=self.start_search)
+
+    def start_search(self, e):
+        print("start search")
+
+        SearchInterface("name")
 
 class NewSectionEntry(TextInput):
     def __init__(self):
@@ -107,7 +168,7 @@ class NewSectionEntry(TextInput):
 
 
     def add_section(self, e):
-        self.section_title = self.text
+        self.section_title = self.text.upper()
         print(self.section_title, "section_title")
         if app.synch_mode_var:
             if yadsk.is_cloud_more_fresh(app):
@@ -163,7 +224,7 @@ class BackBtnMain(Button):
         else:
             self.is_inactive = True
 
-    def save_command(self, e):
+    def save_command(self, *args):
         print("saving")
         new_note =  app.edit_interface.text
         print(app.parent_table)
@@ -184,12 +245,23 @@ class BackBtnMain(Button):
 
         self.unbind(on_release=self.save_command)
         self.bind(on_release=self.command)
+        app.add_notebook_button.set_text("Add notebook")
+        app.add_notebook_button.unbind(on_release=app.add_notebook_button.delete_notebook())
+        app.add_notebook_button.bind(on_release=app.add_notebook_textinput.add_section)
         print("end of save_command, back button should be configured")
 
 
 class SectionBtn(Button):
-    def __init__(self, section, parent_table):
-        super().__init__(text=section, size_hint=(1,None), height=app.notebooks_list_scroll.height * 0.15)
+    def __init__(self, section, parent_table, *args):
+        super().__init__(text=section,
+                         size_hint=(1,None),
+                         text_size=(app.noteboooks_and_inner_lvl_layout.width/2, None),
+                         halign="center",
+                         height=self.texture_size[1] + dp(100))
+        try:
+            self.text = args[0]
+        except IndexError:
+            self.text = section
         self.parent_table = parent_table
         self.section = section
         self.bind(on_release=self.click_command)
@@ -216,9 +288,10 @@ class InnerLvlLabel(Label):
     def __init__(self):
         self.text = ""
         super().__init__(text=self.text,
-                         text_size=(self.width, None),
-                         size = self.texture_size,
+                         text_size=(app.main_layout.width*2, None),
+                         height = self.texture_size[1],
                          size_hint=(1, None),
+                         valign="middle",
                          pos_hint={'center_x': .8, 'bottom_y': 1})
 
     def update_text(self, to_layout, description, date):
@@ -241,10 +314,14 @@ class DirectoryLabel(Label):
 
 class EditBtn(Button):
     def __init__(self):
-        super().__init__(text="Edit",
+        super().__init__(text=self.text,
                          size_hint=(0.25, 1))
         self.bound_notebook = app.current_table
         self.bind(on_release=self.command)
+        self.text = "Edit"
+
+    def set_text(self, new_text):
+        self.text = new_text
 
     def set_current(self):
         self.bound_notebook = app.current_table
@@ -252,6 +329,22 @@ class EditBtn(Button):
     def command(self, e):
         self.set_current()
         app.start_edit()
+
+    def move_notebook(self, e):
+        app.back_btn.save_command()
+        self.set_current()
+        current_parent = app.Data_base[self.bound_notebook][1]
+        app.open_section(app.Data_base[current_parent][1], self.bound_notebook)
+        self.unbind(on_release=self.move_notebook)
+        self.bind(on_release=self.set_new_parent_while_move)
+        self.set_text("Select")
+
+    def set_new_parent_while_move(self, e):
+        value = app.Data_base[self.bound_notebook]
+        app.Data_base[self.bound_notebook] = [value[0], app.current_table, value[2], value[3]]
+        self.set_text("Edit")
+        self.unbind(on_release=self.set_new_parent_while_move)
+        self.bind(on_release=self.command)
 #         remove all widgets from noteboooks_and_inner_lvl_layout
 
 # create buttons layout to edit text features
@@ -293,13 +386,12 @@ class MainApp(App):
 
     def __init__(self):
         super().__init__()
-        self.synch_mode_var = 0
+        self.synch_mode_var = bool()
         self.inner_lvl_text = ""
         self.Data_base_file = "techsupport_base"
         self.Data_base = dict()
         self.current_table = "main"
         self.parent_table = "TSH"
-
 
 
     def build(self):
@@ -314,6 +406,7 @@ class MainApp(App):
         self.synch_layout = BoxLayout(orientation="horizontal",
                                       size_hint=(0.9, 1))
         self.synch_btn = SynchSelector()
+
         if self.compare_with_cloud():
             print("comparing is done")
         else:
@@ -332,10 +425,8 @@ class MainApp(App):
                                                size_hint=(.7, 1)
                                           )
 
-        self.search_name_btn = Button(text="Find\nname",
-                                      size_hint=(0.15, 1))
-        self.search_note_btn = Button(text="Find\nnote",
-                                      size_hint=(0.15, 1))
+        self.search_name_btn = FindNameBtn()
+        self.search_note_btn = FindNoteBtn()
 
         self.add_notebook_layout = BoxLayout(orientation="horizontal",
                                              size_hint=(1, 0.1),
@@ -366,8 +457,6 @@ class MainApp(App):
         self.inner_lvl_scroll = ScrollView()
 
         self.notebooks_list_scroll = ScrollView()
-
-
 
         self.main_layout.add_widget(self.top_menu_layout)
         self.top_menu_layout.add_widget(self.top_dot_menu_btn)
@@ -418,14 +507,24 @@ class MainApp(App):
         self.inner_lvl_text = f"{date[0]}\t{date[1]}\n{str(description[:500])}...\n\n{tbl_of_cntns}"
         print(self.inner_lvl_text)
 
-    def change_sync_mode(self, value, e):
-        self.synch_mode_var = value
-        print("synch_mode_var", self.synch_mode_var)
+    def change_sync_mode(self, checkbox, value):
+        if value:
+            print("active")
+            self.synch_mode_var = True
+            print(self.synch_mode_var)
+            self.compare_with_cloud()
+        else:
+            self.synch_mode_var = False
+            print(self.synch_mode_var)
+            print("inactive")
 
     def start_edit(self):
         self.noteboooks_and_inner_lvl_layout.clear_widgets()
         self.text_features_layout = BoxLayout(orientation="horizontal")
         self.edit_interface = EditText()
+        self.edit_btn.unbind(on_release=self.edit_btn.command)
+        self.edit_btn.bind(on_release=self.edit_btn.move_notebook)
+        self.edit_btn.set_text("Move")
 
     def set_new_note(self, new_note):
         self.compare_with_cloud()
@@ -476,6 +575,7 @@ class MainApp(App):
             pickle.dump(self.Data_base, f)
 
     def compare_with_cloud(self, *args):
+        print(f'compare fun is called, sunchmodevar is {self.synch_mode_var}')
         if self.synch_mode_var:
             print(self.synch_mode_var)
             print("if app.synch_mode_var:")
@@ -484,7 +584,7 @@ class MainApp(App):
             if yadsk.is_cloud_more_fresh(self):
                 print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):")
                 #  select the option
-                if AskYesNo("The base from the cloud is more fresh. Update from the cloud (Yes) or update the cloud (No)?"):
+                if tk.messagebox.askyesno("Attention", "The base from the cloud is more fresh. Update from the cloud (Yes) or update the cloud (No)?"):
                     #  try to download from the cloud
                     if yadsk.download():
                         print("downloaded")
@@ -493,7 +593,7 @@ class MainApp(App):
                             self.Data_base = pickle.load(f)
                     #  if couldn't download the file show error
                     else:
-                        AskYesNo("Couldn't download from the cloud")
+                        tk.messagebox.showerror("Couldn't download from the cloud")
                          # open section offline
                         try:
                             with open(self.Data_base_file, "rb") as f:
@@ -502,7 +602,7 @@ class MainApp(App):
                         except FileNotFoundError:
                             self.create_new_data_base()
                 #  upload to the disk option is selected
-                else:
+                else :
                     print("Update the disk")
                     try:
                         print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):try upload")
@@ -511,6 +611,11 @@ class MainApp(App):
 
                         with open(app.Data_base_file, "rb") as f:
                             app.Data_base = pickle.load(f)
+                        try:
+                            self.open_section(self.parent_table, self.current_table)
+                        except KeyError:
+                            self.open_section("TSH", "main")
+                            print("KeyError while openning current notebook after synchronization")
                     #  if no file on the disk create the new one
                     except FileNotFoundError:
                         print("filenotfound")
@@ -543,7 +648,7 @@ class MainApp(App):
         #  if synch_mode is false
         else:
             try:
-                print("try open data_base")
+                print("try open data_base without ")
                 with open(self.Data_base_file, "rb") as f:
                     self.Data_base = pickle.load(f)
             except EOFError:
