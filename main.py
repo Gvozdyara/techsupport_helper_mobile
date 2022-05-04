@@ -8,6 +8,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
 from kivy.lang.builder import Builder
+import time
 from datetime import datetime
 import pickle
 import yadsk
@@ -16,32 +17,41 @@ from tkinter import messagebox
 
 
 
-class AskYesNo(BoxLayout):
-    def __init__(self, text):
-        super(AskYesNo, self).__init__(orientation="vertical")
-        self.text = text
-        self.label = Label(text=self.text)
+class AskYesNoLayout(BoxLayout):
+    def __init__(self, message, yes_text, no_text):
+        super().__init__(orientation="vertical")
+        self.yes_text = yes_text
+        self.no_text = no_text
+        self.label = Label(text=message)
         self.btn_layout = BoxLayout(orientation="horizontal")
-        self.yes_btn = Button(text="Yes")
+        self.yes_btn = Button(text=self.yes_text)
         self.yes_btn.bind(on_release=self.yes)
-        self.no_btn = Button(text="No")
+        self.no_btn = Button(text=self.no_text)
         self.no_btn.bind(on_release=self.no)
+        self.cancel_btn = Button(text="Cancel")
 
-        app.main_layout.add_widget(self)
+        app.noteboooks_and_inner_lvl_layout.clear_widgets()
+        app.noteboooks_and_inner_lvl_layout.add_widget(self)
         self.add_widget(self.label)
         self.add_widget(self.btn_layout)
         self.btn_layout.add_widget(self.yes_btn)
         self.btn_layout.add_widget(self.no_btn)
+        self.btn_layout.add_widget(self.cancel_btn)
+        self.result = str()
 
     def yes(self, event):
-        app.main_layout.remove_widget(self)
-        print("restored")
+        app.noteboooks_and_inner_lvl_layout.clear_widgets()
+        app.write_to_log("Yes")
         return "Yes"
 
 
     def no(self, event):
-        app.main_layout.remove_widget(self)
+        app.noteboooks_and_inner_lvl_layout.clear_widgets()
         return "No"
+
+    def cancel(self, e):
+        app.noteboooks_and_inner_lvl_layout.clear_widgets()
+        return "Cancel"
 
 
 class SynchSelector(CheckBox):
@@ -62,20 +72,20 @@ class AddNotebookBtn(Button):
         self.text = new_text
 
     def delete_notebook(self, e):
-        print("Start delete")
+        app.write_to_log("Start delete")
         if tk.messagebox.askyesno("Attention", f"Delete {app.current_table}?"):
             # app.compare_with_cloud()
             # try:
             del app.Data_base[app.current_table]
-            print(f"app.Data_base[{app.current_table}] deleted")
+            app.write_to_log(f"app.Data_base[{app.current_table}] deleted")
             i = 1
             while i > 0:
                 data_base = tuple(app.Data_base)
-                print(len(app.Data_base), "during an iteration")
-                print(data_base, "\n current data_base tuple", i, "-i")
+                app.write_to_log(len(app.Data_base), "during an iteration")
+                app.write_to_log(data_base, "\n current data_base tuple", i, "-i")
                 for key in data_base:
                     if app.Data_base[key][1] not in app.Data_base.keys() and app.Data_base[key][1] != "TSH":
-                        print(f"Deleting {key}")
+                        app.write_to_log(f"Deleting {key}")
                         del app.Data_base[key]
                         i += 1
                 i -= 1
@@ -92,7 +102,7 @@ class AddNotebookBtn(Button):
             app.layout_notebooks_list_inner_level()
             app.back_btn.unbind(on_release=app.back_btn.save_command)
             app.back_btn.bind(on_release=app.back_btn.command)
-            print(f"will be openned {app.parent_table}, with its parent {app.Data_base[app.parent_table][1]}")
+            app.write_to_log(f"will be openned {app.parent_table}, with its parent {app.Data_base[app.parent_table][1]}")
             app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
 
 
@@ -142,20 +152,18 @@ class FindNoteBtn(Button):
         self.bind(on_release=self.start_search)
 
     def start_search(self, e):
-        print("start search")
+        app.write_to_log("start search")
         SearchInterface("note")
 
 
 class FindNameBtn(Button):
     def __init__(self):
-        print("Instance of FindNameBtn")
         super().__init__(text="Find\nname", size_hint=(0.15, 1))
 
         self.bind(on_release=self.start_search)
 
     def start_search(self, e):
-        print("start search")
-
+        app.write_to_log("start search")
         SearchInterface("name")
 
 class NewSectionEntry(TextInput):
@@ -169,20 +177,16 @@ class NewSectionEntry(TextInput):
 
     def add_section(self, e):
         self.section_title = self.text.upper()
-        print(self.section_title, "section_title")
-        if app.synch_mode_var:
-            if yadsk.is_cloud_more_fresh(app):
-                yadsk.download()
-                with open(app.Data_base_file, "rb") as f:
-                    app.Data_base = pickle.load(f)
-        else:
-            pass
+        app.compare_with_cloud()
+        with open(app.Data_base_file, "rb") as f:
+            app.Data_base = pickle.load(f)
+
         if self.section_title != "":
             self.text = ""
             # if not section_title in existing_sections:
         try:
             app.Data_base[self.section_title]
-            print(f"{self.section_title} already exists")
+            app.write_to_log(f"{self.section_title} already exists")
         except KeyError:
             self.add_table_to_tbls_list()
             # new_section_btn = Button(section_frame, section_title, open_section, current_table)
@@ -210,7 +214,7 @@ class BackBtnMain(Button):
                                disabled=self.is_inactive)
 
     def command(self, e):
-        print("usuall return")
+        app.write_to_log("usuall return")
         if app.parent_table != "TSH":
             app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
             self.set_state()
@@ -225,9 +229,8 @@ class BackBtnMain(Button):
             self.is_inactive = True
 
     def save_command(self, *args):
-        print("saving")
+        app.write_to_log("saving")
         new_note =  app.edit_interface.text
-        print(app.parent_table)
         if new_note != app.edit_interface.initial_text or app.add_notebook_textinput.text.upper() != app.current_table.upper():
             if app.set_new_note(new_note) == "saved":
                 app.noteboooks_and_inner_lvl_layout.clear_widgets()
@@ -246,9 +249,9 @@ class BackBtnMain(Button):
         self.unbind(on_release=self.save_command)
         self.bind(on_release=self.command)
         app.add_notebook_button.set_text("Add notebook")
-        app.add_notebook_button.unbind(on_release=app.add_notebook_button.delete_notebook())
+        app.add_notebook_button.unbind(on_release=app.add_notebook_button.delete_notebook)
         app.add_notebook_button.bind(on_release=app.add_notebook_textinput.add_section)
-        print("end of save_command, back button should be configured")
+        app.write_to_log("end of save_command, back button should be configured")
 
 
 class SectionBtn(Button):
@@ -273,7 +276,7 @@ class SectionBtn(Button):
 
     def click_command(self, *args):
         app.open_section(self.parent_table, self.section)
-        print(f"open section {self.section} from {self.parent_table}")
+        app.write_to_log(f"open section {self.section} from {self.parent_table}")
 
     def show_inner_lvl(self, *args):
         for i in app.Data_base:
@@ -340,8 +343,12 @@ class EditBtn(Button):
         self.set_text("Select")
 
     def set_new_parent_while_move(self, e):
+        app.compare_with_cloud()
         value = app.Data_base[self.bound_notebook]
         app.Data_base[self.bound_notebook] = [value[0], app.current_table, value[2], value[3]]
+        with open(app.Data_base_file, "wb") as f:
+            pickle.dump(app.Data_base, f)
+
         self.set_text("Edit")
         self.unbind(on_release=self.set_new_parent_while_move)
         self.bind(on_release=self.command)
@@ -408,9 +415,13 @@ class MainApp(App):
         self.synch_btn = SynchSelector()
 
         if self.compare_with_cloud():
-            print("comparing is done")
+            self.write_to_log("comparing is done")
+            tk.messagebox.askyesno("Attention", "The base from the cloud is more fresh. Update from the cloud (Yes) or update the cloud (No)?")
         else:
-            print("comparing is done with else")
+            self.write_to_log("comparing is done with else")
+            tk.messagebox.askyesno("Attention",
+                                   "The base at the disk is more fresh. Update the cloud (Yes) or get from the cloud (No)?")
+
 
         self.synch_label = Label(text="Synchronization",
                                  size_hint=(0.5, 1))
@@ -505,18 +516,15 @@ class MainApp(App):
             to_layout.insert(1, "Здесь пока пусто")
         tbl_of_cntns = "\n".join(to_layout)
         self.inner_lvl_text = f"{date[0]}\t{date[1]}\n{str(description[:500])}...\n\n{tbl_of_cntns}"
-        print(self.inner_lvl_text)
 
     def change_sync_mode(self, checkbox, value):
         if value:
-            print("active")
+            self.write_to_log("active")
             self.synch_mode_var = True
-            print(self.synch_mode_var)
             self.compare_with_cloud()
         else:
             self.synch_mode_var = False
-            print(self.synch_mode_var)
-            print("inactive")
+            self.write_to_log("inactive")
 
     def start_edit(self):
         self.noteboooks_and_inner_lvl_layout.clear_widgets()
@@ -528,15 +536,13 @@ class MainApp(App):
 
     def set_new_note(self, new_note):
         self.compare_with_cloud()
-        print("compare is done")
+        self.write_to_log("comparing is done")
         try:
-
             value = self.Data_base[self.current_table]
             name = self.add_notebook_textinput.text.upper()
             if name in self.Data_base:
                 name = self.current_table
-                print(f"Name {self.add_notebook_textinput.text.upper()} already exists")
-            print(name)
+                self.write_to_log(f"Name {self.add_notebook_textinput.text.upper()} already exists")
             self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
             if name != self.current_table:
                 del self.Data_base[self.current_table]
@@ -552,7 +558,7 @@ class MainApp(App):
                         yadsk.upload(self)
             return "saved"
         except KeyError:
-            print(f"{self.current_table} was deleted from another account")
+            self.write_to_log(f"{self.current_table} was deleted from another account")
             return "key_error"
 
 
@@ -560,7 +566,7 @@ class MainApp(App):
         self.set_current_table(current_table)
         self.set_parent_table(parent_table)
         self.directory_label.set_text()
-        print(f"{self.current_table} is currently openned")
+        self.write_to_log(f"{self.current_table} is currently openned")
 
         self.back_btn.set_state()
         self.back_btn.bind(on_release=self.back_btn.command)
@@ -575,19 +581,18 @@ class MainApp(App):
             pickle.dump(self.Data_base, f)
 
     def compare_with_cloud(self, *args):
-        print(f'compare fun is called, sunchmodevar is {self.synch_mode_var}')
+        self.write_to_log(f'compare fun is called, synchmodevar is {self.synch_mode_var}')
         if self.synch_mode_var:
-            print(self.synch_mode_var)
-            print("if app.synch_mode_var:")
+            self.write_to_log(f"Syncronization is {self.synch_mode_var}")
             #   check if the disk is more fresh
             #  the same if no file on the disk to compare
             if yadsk.is_cloud_more_fresh(self):
-                print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):")
+                self.write_to_log("Cloud is more fresh")
                 #  select the option
                 if tk.messagebox.askyesno("Attention", "The base from the cloud is more fresh. Update from the cloud (Yes) or update the cloud (No)?"):
                     #  try to download from the cloud
                     if yadsk.download():
-                        print("downloaded")
+                        self.write_to_log("downloaded")
                         #  after download successfull open the file
                         with open(self.Data_base_file, "rb") as f:
                             self.Data_base = pickle.load(f)
@@ -603,9 +608,9 @@ class MainApp(App):
                             self.create_new_data_base()
                 #  upload to the disk option is selected
                 else :
-                    print("Update the disk")
+                    self.write_to_log("Uploading to the cloud is selected")
                     try:
-                        print("if yadsk.is_cloud_more_fresh(app.synch_mode_var):try upload")
+                        self.write_to_log("Trying to upload")
                         #  try upload to the cloud
                         yadsk.upload(self)
 
@@ -615,35 +620,39 @@ class MainApp(App):
                             self.open_section(self.parent_table, self.current_table)
                         except KeyError:
                             self.open_section("TSH", "main")
-                            print("KeyError while openning current notebook after synchronization")
+                            self.write_to_log("KeyError while openning current notebook after synchronization")
                     #  if no file on the disk create the new one
                     except FileNotFoundError:
-                        print("filenotfound")
+                        self.write_to_log("filenotfound")
                         self.create_new_data_base()
                     except:
-                        print("connection error probably")
-                        AskYesNo("Connection error porobably")
+                        self.write_to_log("connection error probably, unknown exception")
+                        tk.messagebox.showinfo("Connection error porobably")
                         try:
                             with open(app.Data_base_file, "rb") as f:
                                 app.Data_base = pickle.load(f)
                         except EOFError:
-                            print("EOFError")
+                            self.write_to_log("EOFError")
                             self.create_new_data_base()
                         except FileNotFoundError:
-                            print("FileNotFoundError")
+                            self.write_to_log("FileNotFoundError")
                             self.create_new_data_base()
         #   if cloud is not more fresh
             else:
                 try:
-                    print("try open data_base")
+                    self.write_to_log("try open data_base")
                     with open(self.Data_base_file, "rb") as f:
                         self.Data_base = pickle.load(f)
                 except EOFError:
-                    print("EOFError")
+                    self.write_to_log("EOFError")
                     self.create_new_data_base()
                 except FileNotFoundError:
-                    print("FileNotFoundError")
+                    self.write_to_log("FileNotFoundError")
                     self.create_new_data_base()
+                if tk.messagebox.askyesno("Attention", "The base at the disk is more fresh. Update the cloud (Yes) or get from the cloud (No)?"):
+                    yadsk.upload(self)
+                else:
+                    yadsk.download()
 
         #  if synch_mode is false
         else:
@@ -673,6 +682,18 @@ class MainApp(App):
         for item in reversed(self.to_layout_list):
             SectionBtn(item, inner_table)
 
+    def askyesnocancel(self, message, yes_text, no_text):
+        ask_interface = AskYesNoLayout(message, yes_text, no_text)
+        time.sleep(2)
+        while True:
+            if ask_interface.result == "Yes":
+                return True
+            if ask_interface.result == "No":
+                return False
+
+    def write_to_log(self, message):
+        with open("log.txt", "a") as f:
+            f.write(f"{datetime.now()}\n{message}\n")
 
 if __name__ == '__main__':
     app = MainApp()

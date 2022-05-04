@@ -41,16 +41,16 @@ def is_cloud_more_fresh(app):
             print("CLoud is more fresh")
             return True
         else:
-            print("Disk is more fresh")
+            self.write_to_log("Disk is more fresh")
             return False
     except yadisk.exceptions.PathNotFoundError:
-        print("PathNotFoundError")
+        self.write_to_log("PathNotFoundError")
         return False
     except FileNotFoundError:
-        print("Filenotfound")
+        self.write_to_log("Filenotfound")
         return True
     except requests.exceptions.ConnectionError:
-        print("connection error")
+        self.write_to_log("connection error")
         app.change_sync_mode(False)
         return False
 
