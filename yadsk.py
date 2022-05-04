@@ -8,7 +8,7 @@ def upload(app):
     with open("ya_id.txt", "r") as f:
         tok = f.read()
     y = yadisk.YaDisk(token=tok)
-    print(y.check_token()) # Проверим токен
+    app.write_to_log(y.check_token()) # Проверим токен
     y.upload(app.Data_base_file, "/TSH/techsupport_base", overwrite=True)
 
 
@@ -16,6 +16,7 @@ def upload(app):
 
 
 def download():
+    global app
     try:
         with open("ya_id.txt", "r") as f:
             tok = f.read()
@@ -26,7 +27,7 @@ def download():
     except yadisk.exceptions.PathNotFoundError:
         return False
     except ConnectionError:
-        print("connection error")
+        app.write_to_log("connection error")
         return False
 
 def is_cloud_more_fresh(app):
@@ -38,38 +39,38 @@ def is_cloud_more_fresh(app):
         file_mode_time_epoch = os.path.getmtime(app.Data_base_file)
         file_mode_time = dt.datetime.utcfromtimestamp(file_mode_time_epoch)
         if resobj["modified"].replace(tzinfo=None) - file_mode_time >= dt.timedelta(seconds=100):
-            print("CLoud is more fresh")
+            app.write_to_log("CLoud is more fresh")
             return True
         else:
-            self.write_to_log("Disk is more fresh")
+            app.write_to_log("Disk is more fresh")
             return False
     except yadisk.exceptions.PathNotFoundError:
-        self.write_to_log("PathNotFoundError")
+        app.write_to_log("PathNotFoundError")
         return False
     except FileNotFoundError:
-        self.write_to_log("Filenotfound")
+        app.write_to_log("Filenotfound")
         return True
     except requests.exceptions.ConnectionError:
-        self.write_to_log("connection error")
+        app.write_to_log("connection error")
         app.change_sync_mode(False)
         return False
 
-if __name__ == "__main__":
-    file_mode_time_epoch = os.path.getmtime("techsupport_base")
-    file_mode_time = dt.datetime.utcfromtimestamp(file_mode_time_epoch)
-    with open("ya_id.txt", "r") as f:
-        tok = f.read()
-    y = yadisk.YaDisk(token=tok)
-    try:
-        resobj = y.get_meta("/TSH/techsupport_base")
-        print(resobj["modified"].replace(tzinfo=None), "resobj")
-        print(file_mode_time, "file_mode_time")
-        print(dt.timedelta(seconds=5), "dt.timedelta(seconds=5)")
-        print(resobj["modified"].replace(tzinfo=None) - file_mode_time, 'resobj["modified"].replace(tzinfo=None) - file_mode_time')
-        print(file_mode_time-resobj["modified"].replace(tzinfo=None), 'file_mode_time-resobj["modified"].replace(tzinfo=None)')
-        if resobj["modified"].replace(tzinfo=None) - file_mode_time < dt.timedelta(seconds=5):
-            print ("True")
-        else:
-            print ("False")
-    except yadisk.exceptions.PathNotFoundError:
-        print ("exception")
+# if __name__ == "__main__":
+#     file_mode_time_epoch = os.path.getmtime("techsupport_base")
+#     file_mode_time = dt.datetime.utcfromtimestamp(file_mode_time_epoch)
+#     with open("ya_id.txt", "r") as f:
+#         tok = f.read()
+#     y = yadisk.YaDisk(token=tok)
+#     try:
+#         resobj = y.get_meta("/TSH/techsupport_base")
+#         print(resobj["modified"].replace(tzinfo=None), "resobj")
+#         print(file_mode_time, "file_mode_time")
+#         print(dt.timedelta(seconds=5), "dt.timedelta(seconds=5)")
+#         print(resobj["modified"].replace(tzinfo=None) - file_mode_time, 'resobj["modified"].replace(tzinfo=None) - file_mode_time')
+#         print(file_mode_time-resobj["modified"].replace(tzinfo=None), 'file_mode_time-resobj["modified"].replace(tzinfo=None)')
+#         if resobj["modified"].replace(tzinfo=None) - file_mode_time < dt.timedelta(seconds=5):
+#             print ("True")
+#         else:
+#             print ("False")
+#     except yadisk.exceptions.PathNotFoundError:
+#         print ("exception")

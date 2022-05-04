@@ -81,8 +81,6 @@ class AddNotebookBtn(Button):
             i = 1
             while i > 0:
                 data_base = tuple(app.Data_base)
-                app.write_to_log(len(app.Data_base), "during an iteration")
-                app.write_to_log(data_base, "\n current data_base tuple", i, "-i")
                 for key in data_base:
                     if app.Data_base[key][1] not in app.Data_base.keys() and app.Data_base[key][1] != "TSH":
                         app.write_to_log(f"Deleting {key}")
@@ -98,6 +96,7 @@ class AddNotebookBtn(Button):
             self.unbind(on_release=self.delete_notebook)
             self.bind(on_release=app.add_notebook_textinput.add_section)
             self.set_text("Add notebook")
+            app.add_notebook_textinput.set_initial_text("")
             app.noteboooks_and_inner_lvl_layout.clear_widgets()
             app.layout_notebooks_list_inner_level()
             app.back_btn.unbind(on_release=app.back_btn.save_command)
@@ -337,7 +336,10 @@ class EditBtn(Button):
         app.back_btn.save_command()
         self.set_current()
         current_parent = app.Data_base[self.bound_notebook][1]
-        app.open_section(app.Data_base[current_parent][1], self.bound_notebook)
+        try:
+            app.open_section(app.Data_base[current_parent][1], self.bound_notebook)
+        except KeyError:
+            app.open_section("TSH", "main")
         self.unbind(on_release=self.move_notebook)
         self.bind(on_release=self.set_new_parent_while_move)
         self.set_text("Select")
@@ -414,13 +416,7 @@ class MainApp(App):
                                       size_hint=(0.9, 1))
         self.synch_btn = SynchSelector()
 
-        if self.compare_with_cloud():
-            self.write_to_log("comparing is done")
-            tk.messagebox.askyesno("Attention", "The base from the cloud is more fresh. Update from the cloud (Yes) or update the cloud (No)?")
-        else:
-            self.write_to_log("comparing is done with else")
-            tk.messagebox.askyesno("Attention",
-                                   "The base at the disk is more fresh. Update the cloud (Yes) or get from the cloud (No)?")
+        self.compare_with_cloud()
 
 
         self.synch_label = Label(text="Synchronization",
@@ -639,8 +635,10 @@ class MainApp(App):
                             self.create_new_data_base()
         #   if cloud is not more fresh
             else:
+                self.write_to_log("Trying to upload local to the cloud")
+                yadsk.upload(self)
                 try:
-                    self.write_to_log("try open data_base")
+                    self.write_to_log("try open data_base after uploading")
                     with open(self.Data_base_file, "rb") as f:
                         self.Data_base = pickle.load(f)
                 except EOFError:
@@ -657,14 +655,14 @@ class MainApp(App):
         #  if synch_mode is false
         else:
             try:
-                print("try open data_base without ")
+                self.write_to_log("trying to read local file")
                 with open(self.Data_base_file, "rb") as f:
                     self.Data_base = pickle.load(f)
             except EOFError:
-                print("EOFError")
+                self.write_to_log("EOFError while reading local file")
                 self.create_new_data_base()
             except FileNotFoundError:
-                print("FileNotFoundError")
+                self.write_to_log("FileNotFoundError while reading local file")
                 self.create_new_data_base()
 
 
