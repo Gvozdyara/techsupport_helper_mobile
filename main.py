@@ -235,20 +235,15 @@ class BackBtnMain(Button):
     def save_command(self, *args):
         app.write_to_log("saving")
         new_note =  app.edit_interface.text
-        if new_note != app.edit_interface.initial_text or app.add_notebook_textinput.text.upper() != app.current_table.upper():
-            if app.set_new_note(new_note) == "saved":
-                app.noteboooks_and_inner_lvl_layout.clear_widgets()
-                app.add_notebook_textinput.set_initial_text("")
-                app.layout_notebooks_list_inner_level()
-            elif app.set_new_note(new_note) == "key_error":
-                parent_table = app.Data_base[app.parent_table][1]
-                app.noteboooks_and_inner_lvl_layout.clear_widgets()
-                app.add_notebook_textinput.set_initial_text("")
-                app.layout_notebooks_list_inner_level()
-        else:
+        if app.set_new_note(new_note) == "saved":
             app.noteboooks_and_inner_lvl_layout.clear_widgets()
-            app.layout_notebooks_list_inner_level()
             app.add_notebook_textinput.set_initial_text("")
+            app.layout_notebooks_list_inner_level()
+        elif app.set_new_note(new_note) == "key_error":
+            app.parent_table = app.Data_base[app.parent_table][1]
+            app.noteboooks_and_inner_lvl_layout.clear_widgets()
+            app.add_notebook_textinput.set_initial_text("")
+            app.layout_notebooks_list_inner_level()
 
         self.unbind(on_release=self.save_command)
         self.bind(on_release=self.command)
@@ -341,22 +336,19 @@ class EditBtn(Button):
         app.start_edit()
 
     def move_notebook(self, e):
-        app.write_to_log("saving")
+        app.write_to_log("saving before moving")
         new_note = app.edit_interface.text
-        if new_note != app.edit_interface.initial_text or app.add_notebook_textinput.text.upper() != app.current_table.upper():
-            if app.set_new_note(new_note) == "saved":
-                app.noteboooks_and_inner_lvl_layout.clear_widgets()
-                app.add_notebook_textinput.set_initial_text("")
-                app.layout_notebooks_list_inner_level()
-            elif app.set_new_note(new_note) == "key_error":
-                parent_table = app.Data_base[app.parent_table][1]
-                app.noteboooks_and_inner_lvl_layout.clear_widgets()
-                app.add_notebook_textinput.set_initial_text("")
-                app.layout_notebooks_list_inner_level()
-        else:
+
+        if app.set_new_note(new_note) == "saved":
             app.noteboooks_and_inner_lvl_layout.clear_widgets()
-            app.layout_notebooks_list_inner_level()
             app.add_notebook_textinput.set_initial_text("")
+            app.layout_notebooks_list_inner_level()
+        elif app.set_new_note(new_note) == "key_error":
+            app.parent_table = app.Data_base[app.parent_table][1]
+            app.noteboooks_and_inner_lvl_layout.clear_widgets()
+            app.add_notebook_textinput.set_initial_text("")
+            app.layout_notebooks_list_inner_level()
+
 
         app.back_btn.unbind(on_release=app.back_btn.save_command)
         app.back_btn.bind(on_release=app.back_btn.command)
@@ -376,7 +368,8 @@ class EditBtn(Button):
     def set_new_parent_while_move(self, e):
         app.compare_with_cloud()
         value = app.Data_base[self.bound_notebook]
-        app.Data_base[self.bound_notebook] = [value[0], app.current_table, value[2], value[3]]
+        if self.bound_notebook != app.current_table:
+            app.Data_base[self.bound_notebook] = [value[0], app.current_table, value[2], value[3]]
         with open(app.Data_base_file, "wb") as f:
             pickle.dump(app.Data_base, f)
         if app.synch_mode_var:
@@ -458,7 +451,6 @@ class MainApp(App):
         self.search_textinput = TextInput(multiline=False,
                                                readonly=False,
                                                halign="left",
-                                               font_size=50,
                                                size_hint=(.7, 1)
                                           )
 
@@ -566,22 +558,28 @@ class MainApp(App):
         try:
             value = self.Data_base[self.current_table]
             name = self.add_notebook_textinput.text.upper()
-            if name in self.Data_base:
+            if name != self.current_table and name in self.Data_base.keys():
+                self.write_to_log(f"Name {name} already exists")
                 name = self.current_table
-                self.write_to_log(f"Name {self.add_notebook_textinput.text.upper()} already exists")
-            self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
-            if name != self.current_table:
+            elif name != self.current_table:
+                self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
+                self.write_to_log(f"{new_note} is added to {name}")
                 del self.Data_base[self.current_table]
                 for key in self.Data_base:
                     if self.Data_base[key] == self.current_table:
                         value = self.Data_base[key]
-                        self.Data_base[key] = [value[0, name, value[2], value[3]]]
-                self.set_current_table(name)
-                self.directory_label.set_text()
-                with open(self.Data_base_file, "wb") as f:
-                    pickle.dump(self.Data_base, f)
-                    if self.synch_mode_var:
-                        yadsk.upload(self)
+                        self.Data_base[key] = [value[0], name, value[2], value[3]]
+            elif name == self.current_table:
+                if new_note != app.edit_interface.initial_text:
+                    self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
+                    self.write_to_log(f"{new_note} is added to {name}")
+
+            self.set_current_table(name)
+            self.directory_label.set_text()
+            with open(self.Data_base_file, "wb") as f:
+                pickle.dump(self.Data_base, f)
+                if self.synch_mode_var:
+                    yadsk.upload(self)
             return "saved"
         except KeyError:
             self.write_to_log(f"{self.current_table} was deleted from another account")
