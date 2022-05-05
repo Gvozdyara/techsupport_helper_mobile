@@ -12,8 +12,6 @@ import time
 from datetime import datetime
 import pickle
 import yadsk
-import tkinter as tk
-from tkinter import messagebox
 
 
 
@@ -73,7 +71,7 @@ class AddNotebookBtn(Button):
 
     def delete_notebook(self, e):
         app.write_to_log("Start delete")
-        if tk.messagebox.askyesno("Attention", f"Delete {app.current_table}?"):
+        if True:
             # app.compare_with_cloud()
             # try:
             del app.Data_base[app.current_table]
@@ -615,7 +613,7 @@ class MainApp(App):
             if yadsk.is_cloud_more_fresh(self):
                 self.write_to_log("Cloud is more fresh")
                 #  select the option
-                if tk.messagebox.askyesno("Attention", "The base from the cloud is more fresh. Update from the cloud (Yes) or update the cloud (No)?"):
+                if True:
                     #  try to download from the cloud
                     if yadsk.download():
                         self.write_to_log("downloaded")
@@ -624,7 +622,7 @@ class MainApp(App):
                             self.Data_base = pickle.load(f)
                     #  if couldn't download the file show error
                     else:
-                        tk.messagebox.showerror("Couldn't download from the cloud")
+                        self.write_to_log("Couldn't download")
                          # open section offline
                         try:
                             with open(self.Data_base_file, "rb") as f:
@@ -653,7 +651,7 @@ class MainApp(App):
                         self.create_new_data_base()
                     except:
                         self.write_to_log("connection error probably, unknown exception")
-                        tk.messagebox.showinfo("Connection error porobably")
+
                         try:
                             with open(app.Data_base_file, "rb") as f:
                                 app.Data_base = pickle.load(f)
@@ -677,10 +675,7 @@ class MainApp(App):
                 except FileNotFoundError:
                     self.write_to_log("FileNotFoundError")
                     self.create_new_data_base()
-                    if tk.messagebox.askyesno("Attention", "The base at the disk is more fresh. Update the cloud (Yes) or get from the cloud (No)?"):
-                        yadsk.upload(self)
-                    else:
-                        yadsk.download()
+
 
         #  if synch_mode is false
         else:

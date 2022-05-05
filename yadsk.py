@@ -1,7 +1,6 @@
 import yadisk
 import os
 import datetime as dt
-import requests
 
 def upload(app):
     y = False
