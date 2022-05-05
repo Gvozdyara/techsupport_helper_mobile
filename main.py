@@ -175,7 +175,7 @@ class NewSectionEntry(TextInput):
         super().__init__(multiline=False,
                        readonly=False,
                        halign="left",
-                       # font_size=50,
+                       font_size=24,
                        size_hint=(.7, 1))
 
 
@@ -384,7 +384,7 @@ class EditBtn(Button):
 class EditText(TextInput):
     def __init__(self):
         self.initial_text = app.Data_base[app.current_table][0]
-        self.font_size = int(12)
+        self.font_size = int(24)
         self.text_alignce = str("left")
         self.bold = bool(False)
         self.italic = bool(False)
@@ -451,6 +451,7 @@ class MainApp(App):
         self.search_textinput = TextInput(multiline=False,
                                                readonly=False,
                                                halign="left",
+                                          font_size = 24,
                                                size_hint=(.7, 1)
                                           )
 
