@@ -552,11 +552,18 @@ class MainApp(App):
         self.edit_btn.set_text("Move")
 
     def set_new_note(self, new_note):
-        self.compare_with_cloud()
-        self.write_to_log("comparing is done")
+
         try:
             value = self.Data_base[self.current_table]
             name = self.add_notebook_textinput.text.upper()
+            if new_note == app.edit_interface.initial_text and name == self.current_table:
+                return "saved"
+            self.compare_with_cloud()
+            self.write_to_log("comparing is done")
+            if new_note != app.edit_interface.initial_text and name == self.current_table:
+                self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
+                self.write_to_log(f"{new_note} is added to {name}")
+                return "saved"
             if name != self.current_table and name in self.Data_base.keys():
                 self.write_to_log(f"Name {name} already exists")
                 name = self.current_table
