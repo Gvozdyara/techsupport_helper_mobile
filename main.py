@@ -565,6 +565,10 @@ class MainApp(App):
             if new_note != app.edit_interface.initial_text and name == self.current_table:
                 self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
                 self.write_to_log(f"{new_note} is added to {name}")
+                with open(self.Data_base_file, "wb") as f:
+                    pickle.dump(self.Data_base, f)
+                if self.synch_mode_var:
+                    yadsk.upload(self)
                 return "saved"
             if name != self.current_table and name in self.Data_base.keys():
                 self.write_to_log(f"Name {name} already exists")
