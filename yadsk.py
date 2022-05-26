@@ -34,10 +34,17 @@ def is_cloud_more_fresh(app):
         with open("ya_id.txt", "r") as f:
             tok = f.read()
         y = yadisk.YaDisk(token=tok)
+
         resobj = y.get_meta("/TSH/techsupport_base")
         file_mode_time_epoch = os.path.getmtime(app.Data_base_file)
         file_mode_time = dt.datetime.utcfromtimestamp(file_mode_time_epoch)
-        if resobj["modified"].replace(tzinfo=None) - file_mode_time >= dt.timedelta(seconds=100):
+
+        print(f"{file_mode_time=}")
+        print(f"{resobj['modified'].replace(tzinfo=None)=}")
+        time_delta = resobj["modified"].replace(tzinfo=None) - file_mode_time
+
+        if time_delta >= dt.timedelta(seconds=100):
+
             app.write_to_log("CLoud is more fresh")
             return True
         else:

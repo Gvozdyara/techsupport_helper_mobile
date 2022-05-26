@@ -1,4 +1,4 @@
-#  encoding="utf-8"
+#encoding="utf-8"
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -15,6 +15,8 @@ import pickle
 import yadsk
 import tkinter as tk
 from tkinter import messagebox
+import os
+import threading
 
 
 
@@ -57,14 +59,16 @@ class AskYesNoLayout(BoxLayout):
 
 class SynchSelector(CheckBox):
     def __init__(self):
-        super().__init__(active=None)
+        super().__init__(active=True)
         self.bind(active=app.change_sync_mode)
+        app.clock_synch()
 
 
 class AddNotebookBtn(Button):
     def __init__(self):
         super().__init__(text=self.text,
-                        size_hint=(.3, 1))
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(.3, 1))
                         # pos_hint={'center_x': .8, 'center_y': .5})
         self.bind(on_release=app.add_notebook_textinput.add_section)
         self.text = "Add notebook"
@@ -124,9 +128,7 @@ class SearchInterface():
 
     def search_note(self):
         for key in app.Data_base.keys():
-            print(f"Is search string {app.search_textinput.text} in {app.Data_base.get(key)[0]}")
-            if app.search_textinput.text in app.Data_base[key][0]:
-                print(f"search string {app.search_textinput.text} is in {app.Data_base[key][0]}")
+            if app.search_textinput.text.lower() in app.Data_base[key][0].lower():
                 note = app.Data_base[key][0]
                 if len(note)>202:
                     start_index = note.find(app.search_textinput.text)
@@ -153,7 +155,9 @@ class SearchInterface():
 
 class FindNoteBtn(Button):
     def __init__(self):
-        super().__init__(text="Find\nnote", size_hint=(0.15, 1))
+        super().__init__(text="Find\nnote",
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(0.15, 1))
         self.bind(on_release=self.start_search)
 
     def start_search(self, e):
@@ -163,7 +167,9 @@ class FindNoteBtn(Button):
 
 class FindNameBtn(Button):
     def __init__(self):
-        super().__init__(text="Find\nname", size_hint=(0.15, 1))
+        super().__init__(text="Find\nname",
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(0.15, 1))
 
         self.bind(on_release=self.start_search)
 
@@ -171,12 +177,14 @@ class FindNameBtn(Button):
         app.write_to_log("start search")
         SearchInterface("name")
 
+
 class NewSectionEntry(TextInput):
     def __init__(self):
         super().__init__(multiline=False,
                        readonly=False,
                        halign="left",
                        font_size=24,
+                       font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                        size_hint=(.7, 1))
 
 
@@ -211,12 +219,14 @@ class NewSectionEntry(TextInput):
     def set_initial_text(self, new_text):
         self.text = new_text
 
+
 class BackBtnMain(Button):
     def __init__(self):
         self.is_inactive = False
         super().__init__(text="Back",
-                               size_hint=(0.25, 1),
-                               disabled=self.is_inactive)
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(0.25, 1),
+                         disabled=self.is_inactive)
 
     def command(self, e):
         app.write_to_log("usuall return")
@@ -262,6 +272,7 @@ class SectionBtn(Button):
         super().__init__(text=section,
                          size_hint=(1,None),
                          text_size=(app.noteboooks_and_inner_lvl_layout.width/2, None),
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          halign="center",
                          height=self.texture_size[1] + dp(100))
         try:
@@ -295,6 +306,7 @@ class InnerLvlLabel(Label):
         self.text = ""
         super().__init__(text=self.text,
                          text_size=(app.main_layout.width*2, None),
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          height = self.texture_size[1],
                          size_hint=(1, None),
                          valign="top",
@@ -308,10 +320,11 @@ class InnerLvlLabel(Label):
         self.text = f"{date[0]}\t{date[1]}\n{str(description[:500])}...\n\n{tbl_of_cntns}"
 
 
-
 class DirectoryLabel(Label):
     def __init__(self):
-        super().__init__(text=self.text,size_hint=(0.5, 1))
+        super().__init__(text=self.text,
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(0.5, 1))
         self.text = "TSH/main"
 
     def set_text(self):
@@ -321,6 +334,7 @@ class DirectoryLabel(Label):
 class EditBtn(Button):
     def __init__(self):
         super().__init__(text=self.text,
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          size_hint=(0.25, 1))
         self.bound_notebook = app.current_table
         self.bind(on_release=self.command)
@@ -381,14 +395,14 @@ class EditBtn(Button):
         self.set_text("Edit")
 
 
-
 class EditText(TextInput):
     def __init__(self):
         self.initial_text = app.Data_base[app.current_table][0]
+        self.font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf")
         self.font_size = int(24)
         self.text_alignce = str("left")
         self.bold = bool(False)
-        self.italic = bool(False)
+        self.italic = bool(True)
         self.underline = bool(False)
         self.scrolling = ScrollView()
         super().__init__(text=self.initial_text,
@@ -419,7 +433,7 @@ class MainApp(App):
 
     def __init__(self):
         super().__init__()
-        self.synch_mode_var = bool()
+        self.synch_mode_var = True
         self.inner_lvl_text = ""
         self.Data_base_file = "techsupport_base"
         self.Data_base = dict()
@@ -440,20 +454,19 @@ class MainApp(App):
                                       size_hint=(0.9, 1))
         self.synch_btn = SynchSelector()
 
-        self.compare_with_cloud()
-
-
         self.synch_label = Label(text="Synchronization",
+                                 font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                                  size_hint=(0.5, 1))
 
         self.search_layout = BoxLayout(orientation="horizontal",
                                        size_hint=(1, 0.1),
                                        padding=(2, 10))
         self.search_textinput = TextInput(multiline=False,
-                                               readonly=False,
-                                               halign="left",
+                                          readonly=False,
+                                          halign="left",
                                           font_size = 24,
-                                               size_hint=(.7, 1)
+                                          font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                                          size_hint=(.7, 1)
                                           )
 
         self.search_name_btn = FindNameBtn()
@@ -542,9 +555,11 @@ class MainApp(App):
             self.write_to_log("active")
             self.synch_mode_var = True
             self.compare_with_cloud()
+            self.clock_synch()
         else:
             self.synch_mode_var = False
             self.write_to_log("inactive")
+
 
     def start_edit(self):
         self.noteboooks_and_inner_lvl_layout.clear_widgets()
@@ -676,8 +691,7 @@ class MainApp(App):
                             self.create_new_data_base()
         #   if cloud is not more fresh
             else:
-                self.write_to_log("Trying to upload local to the cloud")
-                yadsk.upload(self)
+
                 try:
                     self.write_to_log("try open data_base after uploading")
                     with open(self.Data_base_file, "rb") as f:
@@ -731,8 +745,18 @@ class MainApp(App):
                 return False
 
     def write_to_log(self, message):
-        with open("log.txt", "a") as f:
+        with open("log.txt", "a", encoding="utf8") as f:
             f.write(f"{datetime.now()}\n{message}\n")
+
+    def clock_synch(self):
+        def tick_synch():
+            while self.synch_mode_var:
+                print("iteration")
+                self.compare_with_cloud()
+                time.sleep(120)
+        self.t = threading.Thread(target=tick_synch)
+        self.t.start()
+
 
 if __name__ == '__main__':
     app = MainApp()

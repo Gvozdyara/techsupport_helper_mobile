@@ -12,8 +12,8 @@ import time
 from datetime import datetime
 import pickle
 import yadsk
-
-
+import threading
+import os
 
 class AskYesNoLayout(BoxLayout):
     def __init__(self, message, yes_text, no_text):
@@ -54,14 +54,16 @@ class AskYesNoLayout(BoxLayout):
 
 class SynchSelector(CheckBox):
     def __init__(self):
-        super().__init__(active=None)
+        super().__init__(active=True)
         self.bind(active=app.change_sync_mode)
+        app.compare_with_cloud()
 
 
 class AddNotebookBtn(Button):
     def __init__(self):
         super().__init__(text=self.text,
-                        size_hint=(.3, 1))
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(.3, 1))
                         # pos_hint={'center_x': .8, 'center_y': .5})
         self.bind(on_release=app.add_notebook_textinput.add_section)
         self.text = "Add notebook"
@@ -150,7 +152,9 @@ class SearchInterface():
 
 class FindNoteBtn(Button):
     def __init__(self):
-        super().__init__(text="Find\nnote", size_hint=(0.15, 1))
+        super().__init__(text="Find\nnote",
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(0.15, 1))
         self.bind(on_release=self.start_search)
 
     def start_search(self, e):
@@ -160,7 +164,9 @@ class FindNoteBtn(Button):
 
 class FindNameBtn(Button):
     def __init__(self):
-        super().__init__(text="Find\nname", size_hint=(0.15, 1))
+        super().__init__(text="Find\nname",
+                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(0.15, 1))
 
         self.bind(on_release=self.start_search)
 
@@ -416,7 +422,7 @@ class MainApp(App):
 
     def __init__(self):
         super().__init__()
-        self.synch_mode_var = bool()
+        self.synch_mode_var = True
         self.inner_lvl_text = ""
         self.Data_base_file = "techsupport_base"
         self.Data_base = dict()
@@ -539,6 +545,7 @@ class MainApp(App):
             self.write_to_log("active")
             self.synch_mode_var = True
             self.compare_with_cloud()
+            self.clock_synch()
         else:
             self.synch_mode_var = False
             self.write_to_log("inactive")
@@ -723,6 +730,15 @@ class MainApp(App):
     def write_to_log(self, message):
         with open("log.txt", "a") as f:
             f.write(f"{datetime.now()}\n{message}\n")
+
+    def clock_synch(self):
+        def tick_synch():
+            while self.synch_mode_var:
+                print("iteration")
+                self.compare_with_cloud()
+                time.sleep(120)
+        self.t = threading.Thread(target=tick_synch)
+        self.t.start()
 
 if __name__ == '__main__':
     app = MainApp()
