@@ -1,4 +1,6 @@
 #encoding="utf-8"
+import multiprocessing
+from kivy import *
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -13,11 +15,10 @@ import time
 from datetime import datetime
 import pickle
 import yadsk
-import tkinter as tk
-from tkinter import messagebox
+# import tkinter as tk
+# from tkinter import messagebox
 import os
 import threading
-
 
 
 class AskYesNoLayout(BoxLayout):
@@ -190,7 +191,9 @@ class NewSectionEntry(TextInput):
 
     def add_section(self, e):
         self.section_title = self.text.upper()
-        app.compare_with_cloud()
+        p=multiprocessing.Process(target=app.compare_with_cloud)
+        p.start()
+        print("Multip started")
         with open(app.Data_base_file, "rb") as f:
             app.Data_base = pickle.load(f)
 
@@ -229,7 +232,7 @@ class BackBtnMain(Button):
                          disabled=self.is_inactive)
 
     def command(self, e):
-        app.write_to_log("usuall return")
+        app.write_to_log("usual return")
         if app.parent_table != "TSH":
             app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
             self.set_state()
@@ -245,7 +248,7 @@ class BackBtnMain(Button):
 
     def save_command(self, *args):
         app.write_to_log("saving")
-        new_note =  app.edit_interface.text
+        new_note = app.edit_interface.text
         if app.set_new_note(new_note) == "saved":
             app.noteboooks_and_inner_lvl_layout.clear_widgets()
             app.add_notebook_textinput.set_initial_text("")
@@ -550,7 +553,7 @@ class MainApp(App):
         tbl_of_cntns = "\n".join(to_layout)
         self.inner_lvl_text = f"{date[0]}\t{date[1]}\n{str(description[:500])}...\n\n{tbl_of_cntns}"
 
-    def change_sync_mode(self, checkbox, value):
+    def change_sync_mode(self, event, value):
         if value:
             self.write_to_log("active")
             self.synch_mode_var = True
@@ -576,15 +579,17 @@ class MainApp(App):
             name = self.add_notebook_textinput.text.upper()
             if new_note == app.edit_interface.initial_text and name == self.current_table:
                 return "saved"
-            self.compare_with_cloud()
+
             self.write_to_log("comparing is done")
             if new_note != app.edit_interface.initial_text and name == self.current_table:
                 self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
                 self.write_to_log(f"{new_note} is added to {name}")
                 with open(self.Data_base_file, "wb") as f:
                     pickle.dump(self.Data_base, f)
+
                 if self.synch_mode_var:
-                    yadsk.upload(self)
+                    t = threading.Thread(target=yadsk.upload, args=(self,))
+                    t.start()
                 return "saved"
             if name != self.current_table and name in self.Data_base.keys():
                 self.write_to_log(f"Name {name} already exists")
@@ -597,6 +602,7 @@ class MainApp(App):
                     if self.Data_base[key] == self.current_table:
                         value = self.Data_base[key]
                         self.Data_base[key] = [value[0], name, value[2], value[3]]
+
             elif name == self.current_table:
                 if new_note != app.edit_interface.initial_text:
                     self.Data_base[name] = [new_note, value[1], value[2], datetime.now()]
@@ -607,7 +613,8 @@ class MainApp(App):
             with open(self.Data_base_file, "wb") as f:
                 pickle.dump(self.Data_base, f)
                 if self.synch_mode_var:
-                    yadsk.upload(self)
+                    t = threading.Thread(target=yadsk.upload, args=(self,))
+                    t.start()
             return "saved"
         except KeyError:
             self.write_to_log(f"{self.current_table} was deleted from another account")
@@ -632,25 +639,32 @@ class MainApp(App):
         with open(self.Data_base_file, "wb") as f:
             pickle.dump(self.Data_base, f)
 
+    def change_synch_label(self, name):
+        self.synch_label.text = name
+
     def compare_with_cloud(self, *args):
         self.write_to_log(f'compare fun is called, synchmodevar is {self.synch_mode_var}')
         if self.synch_mode_var:
+            self.change_synch_label("Check")
             self.write_to_log(f"Syncronization is {self.synch_mode_var}")
             #   check if the disk is more fresh
             #  the same if no file on the disk to compare
             if yadsk.is_cloud_more_fresh(self):
+                self.change_synch_label("In progress")
                 self.write_to_log("Cloud is more fresh")
                 #  select the option
-                if tk.messagebox.askyesno("Attention", "The base from the cloud is more fresh. Update from the cloud (Yes) or update the cloud (No)?"):
+                if True:
                     #  try to download from the cloud
                     if yadsk.download():
                         self.write_to_log("downloaded")
                         #  after download successfull open the file
                         with open(self.Data_base_file, "rb") as f:
                             self.Data_base = pickle.load(f)
+                            self.change_synch_label("Up to date")
                     #  if couldn't download the file show error
                     else:
-                        tk.messagebox.showerror("Couldn't download from the cloud")
+                        self.write_to_log("Couldn't download")
+                        self.change_synch_label("Can't download")
                          # open section offline
                         try:
                             with open(self.Data_base_file, "rb") as f:
@@ -658,57 +672,56 @@ class MainApp(App):
                             #  if file not found on the disk create a new empty one
                         except FileNotFoundError:
                             self.create_new_data_base()
-                #  upload to the disk option is selected
-                else :
-                    self.write_to_log("Uploading to the cloud is selected")
-                    try:
-                        self.write_to_log("Trying to upload")
-                        #  try upload to the cloud
-                        yadsk.upload(self)
-
-                        with open(app.Data_base_file, "rb") as f:
-                            app.Data_base = pickle.load(f)
-                        try:
-                            self.open_section(self.parent_table, self.current_table)
-                        except KeyError:
-                            self.open_section("TSH", "main")
-                            self.write_to_log("KeyError while openning current notebook after synchronization")
-                    #  if no file on the disk create the new one
-                    except FileNotFoundError:
-                        self.write_to_log("filenotfound")
-                        self.create_new_data_base()
-                    except:
-                        self.write_to_log("connection error probably, unknown exception")
-                        tk.messagebox.showinfo("Connection error porobably")
-                        try:
-                            with open(app.Data_base_file, "rb") as f:
-                                app.Data_base = pickle.load(f)
-                        except EOFError:
-                            self.write_to_log("EOFError")
-                            self.create_new_data_base()
-                        except FileNotFoundError:
-                            self.write_to_log("FileNotFoundError")
-                            self.create_new_data_base()
+                #  upload to the cloud option is selected
+                # else :
+                #     self.write_to_log("Uploading to the cloud is selected")
+                #     try:
+                #         self.write_to_log("Trying to upload")
+                #         #  try upload to the cloud
+                #         yadsk.upload(self)
+                #
+                #         with open(app.Data_base_file, "rb") as f:
+                #             app.Data_base = pickle.load(f)
+                #         try:
+                #             self.open_section(self.parent_table, self.current_table)
+                #         except KeyError:
+                #             self.open_section("TSH", "main")
+                #             self.write_to_log("KeyError while openning current notebook after synchronization")
+                #     #  if no file on the disk create the new one
+                #     except FileNotFoundError:
+                #         self.write_to_log("filenotfound")
+                #         self.create_new_data_base()
+                #     except:
+                #         self.write_to_log("connection error probably, unknown exception")
+                #         tk.messagebox.showinfo("Connection error porobably")
+                #         try:
+                #             with open(app.Data_base_file, "rb") as f:
+                #                 app.Data_base = pickle.load(f)
+                #         except EOFError:
+                #             self.write_to_log("EOFError")
+                #             self.create_new_data_base()
+                #         except FileNotFoundError:
+                #             self.write_to_log("FileNotFoundError")
+                #             self.create_new_data_base()
         #   if cloud is not more fresh
             else:
-
                 try:
-                    self.write_to_log("try open data_base after uploading")
+                    self.write_to_log("no need to synch, try open data_base")
                     with open(self.Data_base_file, "rb") as f:
                         self.Data_base = pickle.load(f)
+                    self.change_synch_label("Up to date")
                 except EOFError:
                     self.write_to_log("EOFError")
                     self.create_new_data_base()
+                    self.change_synch_label("No file")
                 except FileNotFoundError:
                     self.write_to_log("FileNotFoundError")
                     self.create_new_data_base()
-                    if tk.messagebox.askyesno("Attention", "The base at the disk is more fresh. Update the cloud (Yes) or get from the cloud (No)?"):
-                        yadsk.upload(self)
-                    else:
-                        yadsk.download()
+                    self.change_synch_label("No file")
 
         #  if synch_mode is false
         else:
+            self.change_synch_label("Synch is OFF")
             try:
                 self.write_to_log("trying to read local file")
                 with open(self.Data_base_file, "rb") as f:
@@ -761,3 +774,4 @@ class MainApp(App):
 if __name__ == '__main__':
     app = MainApp()
     app.run()
+    app.t.join()

@@ -56,9 +56,9 @@ def is_cloud_more_fresh(app):
     except FileNotFoundError:
         app.write_to_log("Filenotfound")
         return True
-    except requests.exceptions.ConnectionError:
-        app.write_to_log("connection error")
-        app.change_sync_mode(False)
+    except Exception as e:
+        app.write_to_log(f"{e=}")
+        app.change_sync_mode("event", False)
         return False
 
 # if __name__ == "__main__":
