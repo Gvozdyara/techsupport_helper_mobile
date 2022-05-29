@@ -11,6 +11,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
 from kivy.lang.builder import Builder
+from kivy.uix.dropdown import DropDown
 import time
 from datetime import datetime
 import pickle
@@ -56,6 +57,42 @@ class AskYesNoLayout(BoxLayout):
     def cancel(self, e):
         app.noteboooks_and_inner_lvl_layout.clear_widgets()
         return "Cancel"
+
+
+class AdditionalMenu(DropDown):
+    def __init__(self):
+        super(AdditionalMenu, self).__init__()
+        d = DumpDataBase()
+        print("AdditionMenu is created")
+        self.add_widget(d)
+
+
+class DumpDataBase(Button):
+    def __init__(self):
+        print("Dump button is created")
+        super(DumpDataBase, self).__init__(text="Save",
+                                           font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                                           size_hint_y=None, height=44)
+        self.bind(on_release=self.dump_data_base)
+        self.bind(on_select=lambda instance, x: setattr(mainbutton, 'text', x))
+
+    def dump_data_base(self, e):
+
+        def main():
+            app.change_synch_label("Saving to file")
+            self.data = ""
+            for i in app.Data_base.items():
+                self.data = f"{self.data}\nname: {i[0]}\nparent= {i[1][1]}\n{i[1][2], i[1][3]}\n{i[1][0]}"
+            with open("data_base.txt", "w", encoding="utf-8") as f:
+                f.write(self.data)
+            app.change_synch_label("Up to date")
+
+        t = threading.Thread(target=main)
+        threads.append(t)
+        t.start()
+
+
+
 
 
 class SynchSelector(CheckBox):
@@ -452,6 +489,9 @@ class MainApp(App):
 
         self.top_dot_menu_btn = Button(text="...",
                                        size_hint=(.1, 1))
+        self.dropdown = AdditionalMenu()
+
+        self.top_dot_menu_btn.bind(on_release=self.dropdown.open)
 
         self.synch_layout = BoxLayout(orientation="horizontal",
                                       size_hint=(0.9, 1))
@@ -772,6 +812,6 @@ class MainApp(App):
 
 
 if __name__ == '__main__':
+    threads = []
     app = MainApp()
     app.run()
-    app.t.join()
