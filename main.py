@@ -82,17 +82,18 @@ class DumpDataBase(Button):
             app.change_synch_label("Saving to file")
             self.data = ""
             for i in app.Data_base.items():
-                self.data = f"{self.data}\nname: {i[0]}\nparent= {i[1][1]}\n{i[1][2], i[1][3]}\n{i[1][0]}"
-            with open("data_base.txt", "w", encoding="utf-8") as f:
+                self.data = f"""{self.data}\nname: {i[0]}\n
+parent= {i[1][1]}\n
+{i[1][2].strftime('%d %b %Y %H:%M:%S'), i[1][3].strftime('%d %b %Y %H:%M:%S')}\n
+                                {i[1][0]}"""""
+            with open(f"{datetime.now().strftime('%d %b %Y %H %M')} data.txt", "w", encoding="utf-8") as f:
                 f.write(self.data)
+            time.sleep(2)
             app.change_synch_label("Up to date")
 
         t = threading.Thread(target=main)
         threads.append(t)
         t.start()
-
-
-
 
 
 class SynchSelector(CheckBox):
@@ -116,7 +117,7 @@ class AddNotebookBtn(Button):
 
     def delete_notebook(self, e):
         app.write_to_log("Start delete")
-        if tk.messagebox.askyesno("Attention", f"Delete {app.current_table}?"):
+        if True:
             # app.compare_with_cloud()
             # try:
             del app.Data_base[app.current_table]
@@ -285,6 +286,7 @@ class BackBtnMain(Button):
 
     def save_command(self, *args):
         app.write_to_log("saving")
+        app.change_synch_label("Saving")
         new_note = app.edit_interface.text
         if app.set_new_note(new_note) == "saved":
             app.noteboooks_and_inner_lvl_layout.clear_widgets()
@@ -305,6 +307,7 @@ class BackBtnMain(Button):
         app.edit_btn.bind(on_release=app.edit_btn.command)
         app.edit_btn.set_text("Edit")
         app.write_to_log("end of save_command, back button should be configured")
+        app.change_synch_label("Up to date")
 
 
 class SectionBtn(Button):
@@ -374,7 +377,7 @@ class DirectoryLabel(Label):
 class EditBtn(Button):
     def __init__(self):
         super().__init__(text=self.text,
-                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          size_hint=(0.25, 1))
         self.bound_notebook = app.current_table
         self.bind(on_release=self.command)
@@ -387,8 +390,10 @@ class EditBtn(Button):
         self.bound_notebook = app.current_table
 
     def command(self, e):
-        self.set_current()
-        app.start_edit()
+        if app.current_table != "main":
+            self.set_current()
+            app.start_edit()
+
 
     def move_notebook(self, e):
         app.write_to_log("saving before moving")
@@ -630,6 +635,7 @@ class MainApp(App):
                 if self.synch_mode_var:
                     t = threading.Thread(target=yadsk.upload, args=(self,))
                     t.start()
+                    threads.append(t)
                 return "saved"
             if name != self.current_table and name in self.Data_base.keys():
                 self.write_to_log(f"Name {name} already exists")
@@ -655,6 +661,7 @@ class MainApp(App):
                 if self.synch_mode_var:
                     t = threading.Thread(target=yadsk.upload, args=(self,))
                     t.start()
+                    threads.append(t)
             return "saved"
         except KeyError:
             self.write_to_log(f"{self.current_table} was deleted from another account")
@@ -809,9 +816,12 @@ class MainApp(App):
                 time.sleep(120)
         self.t = threading.Thread(target=tick_synch)
         self.t.start()
+        threads.append(t)
 
 
 if __name__ == '__main__':
     threads = []
     app = MainApp()
     app.run()
+    for t in threads:
+        t.join()
