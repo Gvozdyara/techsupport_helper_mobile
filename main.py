@@ -309,6 +309,10 @@ class BackBtnMain(Button):
         app.write_to_log("end of save_command, back button should be configured")
         app.change_synch_label("Up to date")
 
+        app.edit_interface.is_used = False
+        app.notebooks_header_layout.remove_widget(app.edit_interface.undo_btn)
+
+
 
 class SectionBtn(Button):
     def __init__(self, section, parent_table, *args):
@@ -450,6 +454,12 @@ class EditText(TextInput):
         self.italic = bool(True)
         self.underline = bool(False)
         self.scrolling = ScrollView()
+        self.change_history = []
+        self.change_history_ind = -1
+        self.is_used = True
+        self.undo_btn = Button(text="Undo")
+        self.undo_btn.bind(on_release=self.undo)
+        app.notebooks_header_layout.add_widget(self.undo_btn)
         super().__init__(text=self.initial_text,
                          font_size=self.font_size,
                          size_hint=(1, None)
@@ -463,6 +473,7 @@ class EditText(TextInput):
         app.add_notebook_button.unbind(on_release=app.add_notebook_textinput.add_section)
         app.add_notebook_button.bind(on_release=app.add_notebook_button.delete_notebook)
         app.add_notebook_button.set_text("Delete notebook")
+        self.change_history_saver()
 
     def set_bold(self, e, value):
         self.bold = value
@@ -472,6 +483,48 @@ class EditText(TextInput):
 
     def set_underline(self, e, value):
         self.underline = value
+
+    def change_history_saver(self):
+
+        def add_change():
+            while self.is_used == True:
+                try:
+                    if self.text != self.change_history[-1]:
+                        print("Saving current state")
+                        print(self.text)
+                        self.change_history.append(self.text)
+                        time.sleep(1)
+                    else:
+                        print("no changes")
+                        time.sleep(1)
+                except Exception as e:
+                    if self.text != self.initial_text:
+                        print("Saving current state")
+                        print(self.text)
+                        self.change_history.append(self.text)
+                        time.sleep(1)
+                    else:
+                        print("no changes")
+                        time.sleep(1)
+
+        self.t = threading.Thread(target=add_change)
+        self.t.start()
+        threads.append(self.t)
+
+    def undo(self, e):
+        try:
+            self.change_history.pop()
+            self.text = self.change_history[-1]
+
+        except Exception as e:
+            print(f"{e=}")
+
+    def __del__(self):
+        self.is_used = False
+
+
+
+        
 
 
 class MainApp(App):
@@ -810,13 +863,14 @@ class MainApp(App):
 
     def clock_synch(self):
         def tick_synch():
-            while self.synch_mode_var:
-                print("iteration")
-                self.compare_with_cloud()
-                time.sleep(120)
+            while app:
+                if self.synch_mode_var:
+                    print("iteration")
+                    self.compare_with_cloud()
+                    time.sleep(120)
         self.t = threading.Thread(target=tick_synch)
         self.t.start()
-        threads.append(t)
+        threads.append(self.t)
 
 
 if __name__ == '__main__':
@@ -824,4 +878,5 @@ if __name__ == '__main__':
     app = MainApp()
     app.run()
     for t in threads:
+        print("Killing thread")
         t.join()
