@@ -1,5 +1,7 @@
-#encoding="utf-8"
+# encoding="utf-8"
 import multiprocessing
+
+import main
 from kivy import *
 from kivy.app import App
 from kivy.uix.label import Label
@@ -9,6 +11,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.scrollview import ScrollView
+from kivy.effects.scroll import ScrollEffect
 from kivy.metrics import dp
 from kivy.lang.builder import Builder
 from kivy.uix.dropdown import DropDown
@@ -49,7 +52,6 @@ class AskYesNoLayout(BoxLayout):
         app.write_to_log("Yes")
         return "Yes"
 
-
     def no(self, event):
         app.noteboooks_and_inner_lvl_layout.clear_widgets()
         return "No"
@@ -63,9 +65,9 @@ class AdditionalMenu(DropDown):
     def __init__(self):
         super(AdditionalMenu, self).__init__()
         d = DumpDataBase()
-        print("AdditionMenu is created")
         self.add_widget(d)
-
+        q = QuitButton()
+        self.add_widget(q)
 
 class DumpDataBase(Button):
     def __init__(self):
@@ -77,7 +79,6 @@ class DumpDataBase(Button):
         self.bind(on_select=lambda instance, x: setattr(mainbutton, 'text', x))
 
     def dump_data_base(self, e):
-
         def main():
             app.change_synch_label("Saving to file")
             self.data = ""
@@ -85,7 +86,7 @@ class DumpDataBase(Button):
                 self.data = f"""{self.data}\nname: {i[0]}\n
 parent= {i[1][1]}\n
 {i[1][2].strftime('%d %b %Y %H:%M:%S'), i[1][3].strftime('%d %b %Y %H:%M:%S')}\n
-                                {i[1][0]}"""""
+                                {i[1][0]}"""
             with open(f"{datetime.now().strftime('%d %b %Y %H %M')} data.txt", "w", encoding="utf-8") as f:
                 f.write(self.data)
             time.sleep(2)
@@ -94,6 +95,25 @@ parent= {i[1][1]}\n
         t = threading.Thread(target=main)
         threads.append(t)
         t.start()
+
+class QuitButton(Button):
+    def __init__(self):
+        super(QuitButton, self).__init__(text="Quit",
+                                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                                         size_hint_y=None, height=44)
+        self.bind(on_release=self.quit)
+        self.bind(on_select=lambda instance, x: setattr(mainbutton, 'text', x))
+
+
+    def quit(self, e):
+        print("Quit is called")
+        app.change_synch_label("Will be closed soon")
+        app.is_used = False
+        for t in threads:
+            t.join()
+            print(f"{t} is killed")
+        app.stop()
+
 
 
 class SynchSelector(CheckBox):
@@ -106,9 +126,9 @@ class SynchSelector(CheckBox):
 class AddNotebookBtn(Button):
     def __init__(self):
         super().__init__(text=self.text,
-                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          size_hint=(.3, 1))
-                        # pos_hint={'center_x': .8, 'center_y': .5})
+        # pos_hint={'center_x': .8, 'center_y': .5})
         self.bind(on_release=app.add_notebook_textinput.add_section)
         self.text = "Add notebook"
 
@@ -116,40 +136,51 @@ class AddNotebookBtn(Button):
         self.text = new_text
 
     def delete_notebook(self, e):
-        app.write_to_log("Start delete")
-        if True:
-            # app.compare_with_cloud()
-            # try:
-            del app.Data_base[app.current_table]
-            app.write_to_log(f"app.Data_base[{app.current_table}] deleted")
-            i = 1
-            while i > 0:
-                data_base = tuple(app.Data_base)
-                for key in data_base:
-                    if app.Data_base[key][1] not in app.Data_base.keys() and app.Data_base[key][1] != "TSH":
-                        app.write_to_log(f"Deleting {key}")
-                        del app.Data_base[key]
-                        i += 1
-                i -= 1
-            with open(app.Data_base_file, "wb") as f:
-                pickle.dump(app.Data_base, f)
-                if app.synch_mode_var:
-                    yadsk.upload(app)
-            # except KeyError:
-            #     AskYesNo(f"There is no {app.current_table} notebook")
-            self.unbind(on_release=self.delete_notebook)
-            self.bind(on_release=app.add_notebook_textinput.add_section)
-            self.set_text("Add notebook")
-            app.add_notebook_textinput.set_initial_text("")
-            app.noteboooks_and_inner_lvl_layout.clear_widgets()
-            app.layout_notebooks_list_inner_level()
-            app.back_btn.unbind(on_release=app.back_btn.save_command)
-            app.back_btn.bind(on_release=app.back_btn.command)
-            app.edit_btn.unbind(on_release=app.edit_btn.move_notebook)
-            app.edit_btn.bind(on_release=app.edit_btn.command)
-            app.edit_btn.set_text("Edit")
-            app.write_to_log(f"will be openned {app.parent_table}, with its parent {app.Data_base[app.parent_table][1]}")
-            app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
+
+        def main():
+            app.write_to_log("Start delete")
+            if True:
+                # app.compare_with_cloud()
+                # try:
+                del app.Data_base[app.current_table]
+                app.write_to_log(f"app.Data_base[{app.current_table}] deleted")
+                i = 1
+                while i > 0:
+                    data_base = tuple(app.Data_base)
+                    for key in data_base:
+                        if app.Data_base[key][1] not in app.Data_base.keys() and app.Data_base[key][1] != "TSH":
+                            app.write_to_log(f"Deleting {key}")
+                            del app.Data_base[key]
+                            i += 1
+                    i -= 1
+                with open(app.Data_base_file, "wb") as f:
+                    pickle.dump(app.Data_base, f)
+                    if app.synch_mode_var:
+                        yadsk.upload(app)
+                # except KeyError:
+                #     AskYesNo(f"There is no {app.current_table} notebook")
+                app.edit_interface.is_used = False
+                app.notebooks_header_layout.remove_widget(app.edit_interface.undo_btn)
+                app.notebooks_header_layout.add_widget(app.directory_label)
+
+                self.unbind(on_release=self.delete_notebook)
+                self.bind(on_release=app.add_notebook_textinput.add_section)
+                self.set_text("Add notebook")
+                app.add_notebook_textinput.set_initial_text("")
+                app.noteboooks_and_inner_lvl_layout.clear_widgets()
+                app.layout_notebooks_list_inner_level()
+                app.back_btn.unbind(on_release=app.back_btn.save_command)
+                app.back_btn.bind(on_release=app.back_btn.command)
+                app.edit_btn.unbind(on_release=app.edit_btn.move_notebook)
+                app.edit_btn.bind(on_release=app.edit_btn.command)
+                app.edit_btn.set_text("Edit")
+                app.write_to_log(
+                    f"will be openned {app.parent_table}, with its parent {app.Data_base[app.parent_table][1]}")
+                app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
+
+        t = threading.Thread(target=main)
+        t.start()
+        threads.append(t)
 
 
 class SearchInterface():
@@ -169,20 +200,18 @@ class SearchInterface():
         for key in app.Data_base.keys():
             if app.search_textinput.text.lower() in app.Data_base[key][0].lower():
                 note = app.Data_base[key][0]
-                if len(note)>202:
+                if len(note) > 202:
                     start_index = note.find(app.search_textinput.text)
-                    if start_index>99:
-                        short = note[start_index-100:start_index+100]
+                    if start_index > 99:
+                        short = note[start_index - 100:start_index + 100]
                     else:
-                        short = note[0:start_index+200]
+                        short = note[0:start_index + 200]
                 else:
                     short = note
                 self.found_notes[key] = short
 
         for key in self.found_notes.keys():
             SectionBtn(key, app.Data_base[key][1], self.found_notes[key])
-
-
 
     def search_name(self):
         for key in app.Data_base.keys():
@@ -195,7 +224,7 @@ class SearchInterface():
 class FindNoteBtn(Button):
     def __init__(self):
         super().__init__(text="Find\nnote",
-                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          size_hint=(0.15, 1))
         self.bind(on_release=self.start_search)
 
@@ -207,7 +236,7 @@ class FindNoteBtn(Button):
 class FindNameBtn(Button):
     def __init__(self):
         super().__init__(text="Find\nname",
-                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          size_hint=(0.15, 1))
 
         self.bind(on_release=self.start_search)
@@ -220,20 +249,14 @@ class FindNameBtn(Button):
 class NewSectionEntry(TextInput):
     def __init__(self):
         super().__init__(multiline=False,
-                       readonly=False,
-                       halign="left",
-                       font_size=24,
-                       font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
-                       size_hint=(.7, 1))
-
+                         readonly=False,
+                         halign="left",
+                         font_size=24,
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(.7, 1))
 
     def add_section(self, e):
         self.section_title = self.text.upper()
-        p=multiprocessing.Process(target=app.compare_with_cloud)
-        p.start()
-        print("Multip started")
-        with open(app.Data_base_file, "rb") as f:
-            app.Data_base = pickle.load(f)
 
         if self.section_title != "":
             self.text = ""
@@ -241,13 +264,22 @@ class NewSectionEntry(TextInput):
         try:
             app.Data_base[self.section_title]
             app.write_to_log(f"{self.section_title} already exists")
+
+            def main():
+                print("start label change")
+                app.change_synch_label("Already exist")
+                time.sleep(1.5)
+                app.change_synch_label("Up to date")
+            t=threading.Thread(target=main)
+            t.start()
+            threads.append(t)
         except KeyError:
             self.add_table_to_tbls_list()
-            # new_section_btn = Button(section_frame, section_title, open_section, current_table)
-            # else:
-            #     messagebox.showinfo("Ошибка", "Такая запись уже существует")
-        else:
-            pass
+            t = threading.Thread(target=app.compare_with_cloud)
+            t.start()
+            threads.append(t)
+
+
 
     def add_table_to_tbls_list(self):
         app.Data_base[self.section_title] = ["Empty", app.current_table, datetime.now(), datetime.now()]
@@ -265,7 +297,7 @@ class BackBtnMain(Button):
     def __init__(self):
         self.is_inactive = False
         super().__init__(text="Back",
-                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          size_hint=(0.25, 1),
                          disabled=self.is_inactive)
 
@@ -311,17 +343,17 @@ class BackBtnMain(Button):
 
         app.edit_interface.is_used = False
         app.notebooks_header_layout.remove_widget(app.edit_interface.undo_btn)
-
+        app.notebooks_header_layout.add_widget(app.directory_label)
 
 
 class SectionBtn(Button):
     def __init__(self, section, parent_table, *args):
         super().__init__(text=section,
-                         size_hint=(1,None),
-                         text_size=(app.noteboooks_and_inner_lvl_layout.width/2, None),
-                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         size_hint=(1, None),
+                         text_size=(app.noteboooks_and_inner_lvl_layout.width / 2, None),
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          halign="center",
-                         height=self.texture_size[1] + dp(100))
+                         height=self.texture_size[1] + dp(50))
         try:
             self.text = args[0]
         except IndexError:
@@ -344,33 +376,33 @@ class SectionBtn(Button):
             if app.Data_base[i][1] == self.section:
                 self.to_layout_sections.append(i)
 
-
         app.inner_lvl_label.update_text(self.to_layout_sections, self.description[:500], self.created_edited_time)
 
 
 class InnerLvlLabel(Label):
     def __init__(self):
-        self.text = ""
+        self.text = "xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         super().__init__(text=self.text,
-                         text_size=(app.main_layout.width*2, None),
-                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
-                         height = self.texture_size[1],
-                         size_hint=(1, None),
+                         text_size=(app.main_layout.width * 2, None),
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         width=self.texture_size[0],
+                         size_hint=(1, 1),
                          valign="top",
-                         pos_hint={'center_x': .8, 'bottom_y': 1})
+                         pos_hint={'center_x': .8, 'bottom_y': 0}
+                         )
 
     def update_text(self, to_layout, description, date):
         to_layout.insert(0, "Содержание")
         if len(to_layout) < 2:
             to_layout.insert(1, "Здесь пока пусто")
-        tbl_of_cntns = "\n".join(to_layout)
-        self.text = f"{date[0]}\t{date[1]}\n{str(description[:500])}...\n\n{tbl_of_cntns}"
+        tbl_of_cntns = "\n\n".join(to_layout)
+        self.text = f"{date[0]}\t{date[1]}\n{str(description[:1000])}...\n\n{tbl_of_cntns}"
 
 
 class DirectoryLabel(Label):
     def __init__(self):
         super().__init__(text=self.text,
-                         font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                         font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          size_hint=(0.5, 1))
         self.text = "TSH/main"
 
@@ -398,7 +430,6 @@ class EditBtn(Button):
             self.set_current()
             app.start_edit()
 
-
     def move_notebook(self, e):
         app.write_to_log("saving before moving")
         new_note = app.edit_interface.text
@@ -413,6 +444,9 @@ class EditBtn(Button):
             app.add_notebook_textinput.set_initial_text("")
             app.layout_notebooks_list_inner_level()
 
+        app.edit_interface.is_used = False
+        app.notebooks_header_layout.remove_widget(app.edit_interface.undo_btn)
+        app.notebooks_header_layout.add_widget(app.directory_label)
 
         app.back_btn.unbind(on_release=app.back_btn.save_command)
         app.back_btn.bind(on_release=app.back_btn.command)
@@ -453,16 +487,19 @@ class EditText(TextInput):
         self.bold = bool(False)
         self.italic = bool(True)
         self.underline = bool(False)
-        self.scrolling = ScrollView()
-        self.change_history = []
+        self.scrolling = ScrollView(effect_cls=ScrollEffect)
+
+        self.change_history = [self.initial_text]
         self.change_history_ind = -1
         self.is_used = True
-        self.undo_btn = Button(text="Undo")
+        app.notebooks_header_layout.remove_widget(app.directory_label)
+        self.undo_btn = Button(text="Undo", size_hint_x=0.5,
+                               font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"))
         self.undo_btn.bind(on_release=self.undo)
         app.notebooks_header_layout.add_widget(self.undo_btn)
         super().__init__(text=self.initial_text,
                          font_size=self.font_size,
-                         size_hint=(1, None)
+                         size_hint=(1, 1)
                          )
         app.add_notebook_textinput.set_initial_text(app.current_table)
         app.noteboooks_and_inner_lvl_layout.add_widget(self.scrolling)
@@ -523,10 +560,6 @@ class EditText(TextInput):
         self.is_used = False
 
 
-
-        
-
-
 class MainApp(App):
 
     def __init__(self):
@@ -537,7 +570,7 @@ class MainApp(App):
         self.Data_base = dict()
         self.current_table = "main"
         self.parent_table = "TSH"
-
+        self.is_used = True
 
     def build(self):
         self.main_layout = BoxLayout(orientation="vertical")
@@ -556,7 +589,7 @@ class MainApp(App):
         self.synch_btn = SynchSelector()
 
         self.synch_label = Label(text="Synchronization",
-                                 font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                                 font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                                  size_hint=(0.5, 1))
 
         self.search_layout = BoxLayout(orientation="horizontal",
@@ -565,8 +598,8 @@ class MainApp(App):
         self.search_textinput = TextInput(multiline=False,
                                           readonly=False,
                                           halign="left",
-                                          font_size = 24,
-                                          font_name = os.path.join("TruetypewriterPolyglott-mELa.ttf"),
+                                          font_size=24,
+                                          font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                                           size_hint=(.7, 1)
                                           )
 
@@ -587,21 +620,23 @@ class MainApp(App):
         self.directory_label = DirectoryLabel()
         self.edit_btn = EditBtn()
         self.noteboooks_and_inner_lvl_layout = BoxLayout(orientation="horizontal",
-                 size_hint=(1, 1),
-                 padding=(0,10,0,0))
+                                                         size_hint=(1, 1),
+                                                         padding=(0, 10, 0, 0))
 
         self.notebooks_list_layout = GridLayout(size_hint_y=None,
-            cols=1)
+                                                cols=1)
         self.notebooks_list_layout.bind(minimum_height=self.notebooks_list_layout.setter('height'))
 
         self.inner_lvl_label = InnerLvlLabel()
-        self.inner_lvl_layout = GridLayout(cols=1, size_hint_y=None, size_hint_x=1,
-                                          pos_hint={"left_x":1, "top_y":0})
+        self.inner_lvl_layout = GridLayout(cols=1, size_hint_y=2, size_hint_x=1,
+                                           pos_hint={"left_x": 0, "top_y": 0})
         self.inner_lvl_layout.bind(minimum_height=self.inner_lvl_layout.setter('height'))
 
         self.inner_lvl_scroll = ScrollView()
+        self.inner_lvl_scroll.effect_cls = ScrollEffect
 
         self.notebooks_list_scroll = ScrollView()
+        self.notebooks_list_scroll.effect_cls = ScrollEffect
 
         self.main_layout.add_widget(self.top_menu_layout)
         self.top_menu_layout.add_widget(self.top_dot_menu_btn)
@@ -637,7 +672,6 @@ class MainApp(App):
         self.noteboooks_and_inner_lvl_layout.add_widget(self.notebooks_list_scroll)
         self.noteboooks_and_inner_lvl_layout.add_widget(self.inner_lvl_scroll)
 
-
     def set_current_table(self, new_current_table):
         self.current_table = new_current_table
 
@@ -660,7 +694,6 @@ class MainApp(App):
         else:
             self.synch_mode_var = False
             self.write_to_log("inactive")
-
 
     def start_edit(self):
         self.noteboooks_and_inner_lvl_layout.clear_widgets()
@@ -720,7 +753,6 @@ class MainApp(App):
             self.write_to_log(f"{self.current_table} was deleted from another account")
             return "key_error"
 
-
     def open_section(self, parent_table, current_table):
         self.set_current_table(current_table)
         self.set_parent_table(parent_table)
@@ -765,7 +797,7 @@ class MainApp(App):
                     else:
                         self.write_to_log("Couldn't download")
                         self.change_synch_label("Can't download")
-                         # open section offline
+                        # open section offline
                         try:
                             with open(self.Data_base_file, "rb") as f:
                                 self.Data_base = pickle.load(f)
@@ -803,7 +835,7 @@ class MainApp(App):
                 #         except FileNotFoundError:
                 #             self.write_to_log("FileNotFoundError")
                 #             self.create_new_data_base()
-        #   if cloud is not more fresh
+            #   if cloud is not more fresh
             else:
                 try:
                     self.write_to_log("no need to synch, try open data_base")
@@ -833,7 +865,6 @@ class MainApp(App):
                 self.write_to_log("FileNotFoundError while reading local file")
                 self.create_new_data_base()
 
-
     def layout_section_btns(self, inner_table):
 
         self.notebooks_list_layout.clear_widgets()
@@ -843,7 +874,6 @@ class MainApp(App):
         for i in self.Data_base:
             if self.Data_base[i][1] == inner_table:
                 self.to_layout_list.append(i)
-
 
         for item in reversed(self.to_layout_list):
             SectionBtn(item, inner_table)
@@ -863,11 +893,12 @@ class MainApp(App):
 
     def clock_synch(self):
         def tick_synch():
-            while app:
+            while self.is_used:
                 if self.synch_mode_var:
                     print("iteration")
                     self.compare_with_cloud()
-                    time.sleep(120)
+                    time.sleep(30)
+
         self.t = threading.Thread(target=tick_synch)
         self.t.start()
         threads.append(self.t)
@@ -877,6 +908,5 @@ if __name__ == '__main__':
     threads = []
     app = MainApp()
     app.run()
-    for t in threads:
-        print("Killing thread")
-        t.join()
+    # for t in threads:
+    #     t.join()
