@@ -275,9 +275,6 @@ class NewSectionEntry(TextInput):
             threads.append(t)
         except KeyError:
             self.add_table_to_tbls_list()
-            t = threading.Thread(target=app.compare_with_cloud)
-            t.start()
-            threads.append(t)
 
 
 
@@ -286,7 +283,9 @@ class NewSectionEntry(TextInput):
         with open(app.Data_base_file, "wb") as f:
             pickle.dump(app.Data_base, f)
         if app.synch_mode_var:
-            yadsk.upload(app)
+            t = threading.Thread(target=yadsk.upload, args=(app,))
+            t.start()
+            threads.append(t)
         btn = SectionBtn(self.section_title, app.current_table)
 
     def set_initial_text(self, new_text):

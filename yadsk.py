@@ -3,12 +3,14 @@ import os
 import datetime as dt
 
 def upload(app):
+    app.change_synch_label("Uploading...")
     y = False
     with open("ya_id.txt", "r") as f:
         tok = f.read()
     y = yadisk.YaDisk(token=tok)
     app.write_to_log(y.check_token()) # Проверим токен
     y.upload(app.Data_base_file, "/TSH/techsupport_base", overwrite=True)
+    app.change_synch_label("Up to date")
 
 
 
