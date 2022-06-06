@@ -136,51 +136,48 @@ class AddNotebookBtn(Button):
         self.text = new_text
 
     def delete_notebook(self, e):
+        app.write_to_log("Start delete")
+        del app.Data_base[app.current_table]
+        app.write_to_log(f"app.Data_base[{app.current_table}] deleted")
+        i = 1
+        while i > 0:
+            data_base = tuple(app.Data_base)
+            for key in data_base:
+                if app.Data_base[key][1] not in app.Data_base.keys() and app.Data_base[key][1] != "TSH":
+                    app.write_to_log(f"Deleting {key}")
+                    del app.Data_base[key]
+                    i += 1
+            i -= 1
+        with open(app.Data_base_file, "wb") as f:
+            pickle.dump(app.Data_base, f)
+        if app.synch_mode_var:
+            def main():
+                yadsk.upload(app)
+            t = threading.Thread(target=main)
+            t.start()
+            threads.append(t)
+        # except KeyError:
+        #     AskYesNo(f"There is no {app.current_table} notebook")
+        app.edit_interface.is_used = False
+        app.notebooks_header_layout.remove_widget(app.edit_interface.undo_btn)
+        app.notebooks_header_layout.add_widget(app.directory_label)
 
-        def main():
-            app.write_to_log("Start delete")
-            if True:
-                # app.compare_with_cloud()
-                # try:
-                del app.Data_base[app.current_table]
-                app.write_to_log(f"app.Data_base[{app.current_table}] deleted")
-                i = 1
-                while i > 0:
-                    data_base = tuple(app.Data_base)
-                    for key in data_base:
-                        if app.Data_base[key][1] not in app.Data_base.keys() and app.Data_base[key][1] != "TSH":
-                            app.write_to_log(f"Deleting {key}")
-                            del app.Data_base[key]
-                            i += 1
-                    i -= 1
-                with open(app.Data_base_file, "wb") as f:
-                    pickle.dump(app.Data_base, f)
-                    if app.synch_mode_var:
-                        yadsk.upload(app)
-                # except KeyError:
-                #     AskYesNo(f"There is no {app.current_table} notebook")
-                app.edit_interface.is_used = False
-                app.notebooks_header_layout.remove_widget(app.edit_interface.undo_btn)
-                app.notebooks_header_layout.add_widget(app.directory_label)
+        self.unbind(on_release=self.delete_notebook)
+        self.bind(on_release=app.add_notebook_textinput.add_section)
+        self.set_text("Add notebook")
+        app.add_notebook_textinput.set_initial_text("")
+        app.noteboooks_and_inner_lvl_layout.clear_widgets()
+        app.layout_notebooks_list_inner_level()
+        app.back_btn.unbind(on_release=app.back_btn.save_command)
+        app.back_btn.bind(on_release=app.back_btn.command)
+        app.edit_btn.unbind(on_release=app.edit_btn.move_notebook)
+        app.edit_btn.bind(on_release=app.edit_btn.command)
+        app.edit_btn.set_text("Edit")
+        app.write_to_log(
+            f"will be openned {app.parent_table}, with its parent {app.Data_base[app.parent_table][1]}")
+        app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
 
-                self.unbind(on_release=self.delete_notebook)
-                self.bind(on_release=app.add_notebook_textinput.add_section)
-                self.set_text("Add notebook")
-                app.add_notebook_textinput.set_initial_text("")
-                app.noteboooks_and_inner_lvl_layout.clear_widgets()
-                app.layout_notebooks_list_inner_level()
-                app.back_btn.unbind(on_release=app.back_btn.save_command)
-                app.back_btn.bind(on_release=app.back_btn.command)
-                app.edit_btn.unbind(on_release=app.edit_btn.move_notebook)
-                app.edit_btn.bind(on_release=app.edit_btn.command)
-                app.edit_btn.set_text("Edit")
-                app.write_to_log(
-                    f"will be openned {app.parent_table}, with its parent {app.Data_base[app.parent_table][1]}")
-                app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
 
-        t = threading.Thread(target=main)
-        t.start()
-        threads.append(t)
 
 
 class SearchInterface():
@@ -466,12 +463,12 @@ class EditBtn(Button):
         value = app.Data_base[self.bound_notebook]
         if self.bound_notebook != app.current_table:
             app.Data_base[self.bound_notebook] = [value[0], app.current_table, value[2], value[3]]
-        with open(app.Data_base_file, "wb") as f:
-            pickle.dump(app.Data_base, f)
-        if app.synch_mode_var:
-            t = threading.Thread(target=yadsk.upload, args=(app,))
-            t.start(0)
-            threads.append(t)
+            with open(app.Data_base_file, "wb") as f:
+                pickle.dump(app.Data_base, f)
+            if app.synch_mode_var:
+                t = threading.Thread(target=yadsk.upload, args=(app,))
+                t.start()
+                threads.append(t)
 
         self.unbind(on_release=self.set_new_parent_while_move)
         self.bind(on_release=self.command)
@@ -721,15 +718,15 @@ class MainApp(App):
                     self.change_synch_label("Choose another name")
                     name = self.current_table
                 else:
-                    self.set_current_table(name)
-                    self.directory_label.set_text()
                     self.Data_base[name] = value
                     self.write_to_log(f"{new_note} is added to {name}")
                     del self.Data_base[self.current_table]
                     for key in self.Data_base:
-                        if self.Data_base[key] == self.current_table:
+                        if self.Data_base[key][1] == self.current_table:
                             value = self.Data_base[key]
                             self.Data_base[key] = [value[0], name, value[2], value[3]]
+                    self.set_current_table(name)
+                    self.directory_label.set_text()
                     is_name_changed = True
 
             if is_name_changed or is_note_changed:
