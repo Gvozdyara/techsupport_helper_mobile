@@ -1,8 +1,9 @@
 # encoding="utf-8"
 import multiprocessing
-
-import main
+import asyncio
+import threading
 from kivy import *
+from kivy.clock import Clock
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -17,12 +18,12 @@ from kivy.lang.builder import Builder
 from kivy.uix.dropdown import DropDown
 import time
 from datetime import datetime
+from datetime import timedelta
 import pickle
-import yadsk
-# import tkinter as tk
-# from tkinter import messagebox
 import os
-import threading
+
+import yadsk
+
 
 
 class AskYesNoLayout(BoxLayout):
@@ -68,6 +69,7 @@ class AdditionalMenu(DropDown):
         self.add_widget(d)
         q = QuitButton()
         self.add_widget(q)
+        
 
 class DumpDataBase(Button):
     def __init__(self):
@@ -95,6 +97,7 @@ parent= {i[1][1]}\n
         t = threading.Thread(target=main)
         threads.append(t)
         t.start()
+        
 
 class QuitButton(Button):
     def __init__(self):
@@ -176,7 +179,6 @@ class AddNotebookBtn(Button):
         app.write_to_log(
             f"will be openned {app.parent_table}, with its parent {app.Data_base[app.parent_table][1]}")
         app.open_section(app.Data_base[app.parent_table][1], app.parent_table)
-
 
 
 
@@ -325,6 +327,7 @@ class BackBtnMain(Button):
             app.add_notebook_textinput.set_initial_text("")
             app.layout_notebooks_list_inner_level()
 
+        
         self.unbind(on_release=self.save_command)
         self.bind(on_release=self.command)
         app.add_notebook_button.set_text("Add notebook")
@@ -376,9 +379,9 @@ class SectionBtn(Button):
 
 class InnerLvlLabel(Label):
     def __init__(self):
-        self.text = "xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        self.text = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         super().__init__(text=self.text,
-                         text_size=(app.main_layout.width * 2, None),
+                         text_size=(self.width *3.8, None),
                          font_name=os.path.join("TruetypewriterPolyglott-mELa.ttf"),
                          width=self.texture_size[0],
                          size_hint=(1, 1),
@@ -507,7 +510,10 @@ class EditText(TextInput):
         app.add_notebook_button.unbind(on_release=app.add_notebook_textinput.add_section)
         app.add_notebook_button.bind(on_release=app.add_notebook_button.delete_notebook)
         app.add_notebook_button.set_text("Delete notebook")
+        #  save chang history for undo button
         self.change_history_saver()
+        #  check if no change to close the editor so no 
+        Clock.schedule_interval(self.check_activity, 300)
 
     def set_bold(self, e, value):
         self.bold = value
@@ -524,31 +530,36 @@ class EditText(TextInput):
             while self.is_used == True:
                 try:
                     if self.text != self.change_history[-1]:
-                        print("Saving current state")
-                        print(self.text)
                         self.change_history.append(self.text)
                         time.sleep(1)
                     else:
-                        print("no changes")
                         time.sleep(1)
-                except Exception as e:
+                except IndexError as e:
                     if self.text != self.initial_text:
-                        print("Saving current state")
-                        print(self.text)
                         self.change_history.append(self.text)
                         time.sleep(1)
                     else:
-                        print("no changes")
                         time.sleep(1)
 
         self.t = threading.Thread(target=add_change)
         self.t.start()
         threads.append(self.t)
 
+    def check_activity(self, dt):
+        while self.is_used:
+            print("Start of  checking state cycle")
+            text_state = self.text
+            if text_state == self.text:
+                print("saving")
+                app.back_btn.save_command()
+            else:
+                continue
+    
+
     def undo(self, e):
         try:
             self.change_history.pop()
-            self.text = self.change_history[-1]
+            self.text = self.change_history[-1][0]
 
         except Exception as e:
             print(f"{e=}")
@@ -568,6 +579,11 @@ class MainApp(App):
         self.current_table = "main"
         self.parent_table = "TSH"
         self.is_used = True
+        try:
+            with open(self.Data_base_file, "rb") as f:
+                self.Data_base = pickle.load(f)
+        except FileNotFoundError:
+            pass
 
     def build(self):
         self.main_layout = BoxLayout(orientation="vertical")
@@ -624,7 +640,7 @@ class MainApp(App):
                                                 cols=1)
         self.notebooks_list_layout.bind(minimum_height=self.notebooks_list_layout.setter('height'))
 
-        self.inner_lvl_label = InnerLvlLabel()
+        
         self.inner_lvl_layout = GridLayout(cols=1, size_hint_y=2, size_hint_x=1,
                                            pos_hint={"left_x": 0, "top_y": 0})
         self.inner_lvl_layout.bind(minimum_height=self.inner_lvl_layout.setter('height'))
@@ -634,6 +650,7 @@ class MainApp(App):
 
         self.notebooks_list_scroll = ScrollView()
         self.notebooks_list_scroll.effect_cls = ScrollEffect
+        self.inner_lvl_label = InnerLvlLabel()
 
         self.main_layout.add_widget(self.top_menu_layout)
         self.top_menu_layout.add_widget(self.top_dot_menu_btn)
@@ -730,6 +747,18 @@ class MainApp(App):
                     is_name_changed = True
 
             if is_name_changed or is_note_changed:
+                
+                def update_parents_last_edit(notebook):
+                    val = self.Data_base[notebook]
+                    del self.Data_base[notebook]
+                    print(f"{val=}")
+                    self.Data_base[notebook] = [val[0],val[1],val[2],datetime.now()]
+                    if val[1] != "main":
+                        print(val[1])
+                        update_parents_last_edit(val[1])
+                        
+                update_parents_last_edit(name)
+                
                 with open(self.Data_base_file, "wb") as f:
                     pickle.dump(self.Data_base, f)
                 if self.synch_mode_var:
