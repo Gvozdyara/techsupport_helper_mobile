@@ -373,6 +373,7 @@ class SectionBtn(Button):
         for i in app.Data_base:
             if app.Data_base[i][1] == self.section:
                 self.to_layout_sections.append(i)
+        self.to_layout_sections = list(reversed(self.to_layout_sections))
 
         app.inner_lvl_label.update_text(self.to_layout_sections, self.description[:500], self.created_edited_time)
 
@@ -751,10 +752,8 @@ class MainApp(App):
                 def update_parents_last_edit(notebook):
                     val = self.Data_base[notebook]
                     del self.Data_base[notebook]
-                    print(f"{val=}")
                     self.Data_base[notebook] = [val[0],val[1],val[2],datetime.now()]
                     if val[1] != "main":
-                        print(val[1])
                         update_parents_last_edit(val[1])
                         
                 update_parents_last_edit(name)
