@@ -13,9 +13,6 @@ def upload(app):
     app.change_synch_label("Up to date")
 
 
-
-
-
 def download():
     global app
     try:
@@ -30,6 +27,7 @@ def download():
     except ConnectionError:
         app.write_to_log("connection error")
         return False
+    
 
 def is_cloud_more_fresh(app):
     try:
@@ -48,20 +46,20 @@ def is_cloud_more_fresh(app):
         if time_delta >= dt.timedelta(seconds=100):
 
             app.write_to_log("CLoud is more fresh")
-            return True
+            return "Cloud"
         else:
             app.write_to_log("Disk is more fresh")
-            return False
+            return "Disk"
     except yadisk.exceptions.PathNotFoundError:
         app.write_to_log("PathNotFoundError")
-        return False
+        return "Empty cloud"
     except FileNotFoundError:
         app.write_to_log("Filenotfound")
-        return True
+        return "Empty disk"
     except Exception as e:
         app.write_to_log(f"{e=}")
         app.change_sync_mode("event", False)
-        return False
+        return "Error"
 
 # if __name__ == "__main__":
 #     file_mode_time_epoch = os.path.getmtime("techsupport_base")

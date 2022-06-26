@@ -115,8 +115,7 @@ class QuitButton(Button):
         for t in threads:
             t.join()
             print(f"{t} is killed")
-        app.stop()
-
+        quit()
 
 
 class SynchSelector(CheckBox):
@@ -140,15 +139,17 @@ class AddNotebookBtn(Button):
 
     def delete_notebook(self, e):
         app.write_to_log("Start delete")
-        del app.Data_base[app.current_table]
+        data = app.Data_base[app.current_table]
+        app.Data_base[app.current_table] = [data[0], "TRASH BIN", data[2], data[3]]
         app.write_to_log(f"app.Data_base[{app.current_table}] deleted")
         i = 1
         while i > 0:
             data_base = tuple(app.Data_base)
             for key in data_base:
                 if app.Data_base[key][1] not in app.Data_base.keys() and app.Data_base[key][1] != "TSH":
+                    data = app.Data_base[key]
+                    app.Data_base[app.current_table] = [data[0], "TRASH BIN", data[2], data[3]]
                     app.write_to_log(f"Deleting {key}")
-                    del app.Data_base[key]
                     i += 1
             i -= 1
         with open(app.Data_base_file, "wb") as f:
@@ -583,8 +584,8 @@ class MainApp(App):
         try:
             with open(self.Data_base_file, "rb") as f:
                 self.Data_base = pickle.load(f)
-        except FileNotFoundError:
-            pass
+        except FileNotFoundError or EOFError:
+            self.create_new_data_base()
 
     def build(self):
         self.main_layout = BoxLayout(orientation="vertical")
@@ -799,7 +800,8 @@ class MainApp(App):
     def create_new_data_base(self):
         self.Data_base = dict()
         self.Data_base["main"] = ["Main folder", "TSH", datetime.now(), datetime.now()]
-        self.Data_base["My notebook"] = ["New note", "main", datetime.now(), datetime.now()]
+        self.Data_base["MY NOTEBOOK"] = ["New note", "main", datetime.now(), datetime.now()]
+        self.Data_base["TRASH BIN"] = ["Trash belongs here", "main", datetime.now(), datetime.now()]
         with open(self.Data_base_file, "wb") as f:
             pickle.dump(self.Data_base, f)
 
@@ -813,7 +815,8 @@ class MainApp(App):
             self.write_to_log(f"Syncronization is {self.synch_mode_var}")
             #   check if the disk is more fresh
             #  the same if no file on the disk to compare
-            if yadsk.is_cloud_more_fresh(self):
+            comparing_result = yadsk.is_cloud_more_fresh(self)
+            if comparing_result == "Cloud":
                 self.change_synch_label("In progress")
                 self.write_to_log("Cloud is more fresh")
                 #  select the option
@@ -821,10 +824,11 @@ class MainApp(App):
                     #  try to download from the cloud
                     if yadsk.download():
                         self.write_to_log("downloaded")
-                        #  after download successfull open the file
+                        #  after download successfull merge
                         with open(self.Data_base_file, "rb") as f:
-                            self.Data_base = pickle.load(f)
-                            self.change_synch_label("Up to date")
+                            self.cloud_base = pickle.load(f)
+                        self.merge_bases(self.cloud_base)
+                        self.change_synch_label("Up to date")
                     #  if couldn't download the file show error
                     else:
                         self.write_to_log("Couldn't download")
@@ -836,43 +840,45 @@ class MainApp(App):
                             #  if file not found on the disk create a new empty one
                         except FileNotFoundError:
                             self.create_new_data_base()
-                #  upload to the cloud option is selected
-                # else :
-                #     self.write_to_log("Uploading to the cloud is selected")
-                #     try:
-                #         self.write_to_log("Trying to upload")
-                #         #  try upload to the cloud
-                #         yadsk.upload(self)
-                #
-                #         with open(app.Data_base_file, "rb") as f:
-                #             app.Data_base = pickle.load(f)
-                #         try:
-                #             self.open_section(self.parent_table, self.current_table)
-                #         except KeyError:
-                #             self.open_section("TSH", "main")
-                #             self.write_to_log("KeyError while openning current notebook after synchronization")
-                #     #  if no file on the disk create the new one
-                #     except FileNotFoundError:
-                #         self.write_to_log("filenotfound")
-                #         self.create_new_data_base()
-                #     except:
-                #         self.write_to_log("connection error probably, unknown exception")
-                #         tk.messagebox.showinfo("Connection error porobably")
-                #         try:
-                #             with open(app.Data_base_file, "rb") as f:
-                #                 app.Data_base = pickle.load(f)
-                #         except EOFError:
-                #             self.write_to_log("EOFError")
-                #             self.create_new_data_base()
-                #         except FileNotFoundError:
-                #             self.write_to_log("FileNotFoundError")
-                #             self.create_new_data_base()
-            #   if cloud is not more fresh
-            else:
+                  #  (not used) upload to the cloud option is selected
+                else:
+                    self.write_to_log("Uploading to the cloud is selected")
+                    try:
+                        self.write_to_log("Trying to upload")
+                        #  try upload to the cloud
+                        yadsk.upload(self)
+               
+                        with open(app.Data_base_file, "rb") as f:
+                            app.Data_base = pickle.load(f)
+                        try:
+                            self.open_section(self.parent_table, self.current_table)
+                        except KeyError:
+                            self.open_section("TSH", "main")
+                            self.write_to_log("KeyError while openning current notebook after synchronization")
+                    #  if no file on the disk create the new one
+                    except FileNotFoundError:
+                        self.write_to_log("filenotfound")
+                        self.create_new_data_base()
+                    except:
+                        self.write_to_log("connection error probably, unknown exception")
+                        tk.messagebox.showinfo("Connection error porobably")
+                        try:
+                            with open(app.Data_base_file, "rb") as f:
+                                app.Data_base = pickle.load(f)
+                        except EOFError:
+                            self.write_to_log("EOFError")
+                            self.create_new_data_base()
+                        except FileNotFoundError:
+                            self.write_to_log("FileNotFoundError")
+                            self.create_new_data_base()
+              # if cloud is not more fresh
+            elif comparing_result == "Disk":
                 try:
-                    self.write_to_log("no need to synch, try open data_base")
+                    self.write_to_log("Merging")
+                    yadsk.download()
                     with open(self.Data_base_file, "rb") as f:
-                        self.Data_base = pickle.load(f)
+                        self.cloud_base = pickle.load(f)
+                    self.merge_bases(self.cloud_base)
                     self.change_synch_label("Up to date")
                 except EOFError:
                     self.write_to_log("EOFError")
@@ -882,6 +888,8 @@ class MainApp(App):
                     self.write_to_log("FileNotFoundError")
                     self.create_new_data_base()
                     self.change_synch_label("No file")
+            else:
+                self.change_synch_label(comparing_result)
 
         #  if synch_mode is false
         else:
@@ -897,15 +905,46 @@ class MainApp(App):
                 self.write_to_log("FileNotFoundError while reading local file")
                 self.create_new_data_base()
 
+    def merge_bases(self, cloud_base, *args):
+        
+        merged_base = dict()
+        #  compare data_bases
+        for i in cloud_base.keys():
+            #  check if the item is in both data_bases
+            if i in self.Data_base.keys():
+                #  select the newest
+                #  if datetime.strptime(cloud_base[i][3], "%d %b %Y %H:%M:%S") >= datetime.strptime(self.Data_base[i][3], "%d %b %Y %H:%M:%S"):
+                if cloud_base[i][3] >= self.Data_base[i][3]:
+                    data = cloud_base[i]
+                    merged_base[i] = [data[0],data[1],data[2],data[3]]
+                    del self.Data_base[i]
+                else:
+                    data = self.Data_base[i]
+                    merged_base[i] = [data[0],data[1],data[2],data[3]]
+                    del self.Data_base[i]
+            else:
+                data = cloud_base[i]
+                merged_base[i] = [data[0],data[1],data[2],data[3]]
+        for i in self.Data_base.keys():
+            data = self.Data_base[i]
+            merged_base[i] = [data[0],data[1],data[2],data[3]]
+
+        self.Data_base = merged_base
+
+        with open(self.Data_base_file, "wb") as f:
+            pickle.dump(self.Data_base, f)
+
     def layout_section_btns(self, inner_table):
 
         self.notebooks_list_layout.clear_widgets()
 
         self.to_layout_list = list()
-
+        if inner_table == "main":
+            self.to_layout_list.append("TRASH BIN")
         for i in self.Data_base:
             if self.Data_base[i][1] == inner_table:
-                self.to_layout_list.append(i)
+                if i != "TRASH BIN":
+                    self.to_layout_list.append(i)
 
         for item in reversed(self.to_layout_list):
             SectionBtn(item, inner_table)
@@ -940,5 +979,6 @@ if __name__ == '__main__':
     threads = []
     app = MainApp()
     app.run()
+    quit()
     # for t in threads:
     #     t.join()
